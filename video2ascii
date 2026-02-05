@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# video2ascii
+# Convert a video to ASCII frames and play it in the terminal.
+#
+# Requirements:
+#   macOS: brew install ffmpeg jp2a
+#   Linux: apt install ffmpeg jp2a (or equivalent)
+#
+# Usage:
+#   ./video2ascii input.mp4
+#   ./video2ascii input.mp4 --width 160 --fps 12
+#   ./video2ascii input.mp4 --width 140 --fps 10 --color
+#   ./video2ascii input.mp4 --no-cache   # don’t keep extracted frames
+
+set -euo pipefail
+
+WIDTH=160
+FPS=12
+COLOR=1
+CACHE=1
+
+die() { echo "Error: $*" >&2; exit 1; }
+
+need() {
+  command -v "$1" >/dev/null 2>&1 || die "Missing dependency: $1"
+}
+
+INPUT="${1:-}"
+[[ -n "${INPUT}" ]] || die "No input file provided."
+[[ -f "${INPUT}" ]] || die "Input file not found: ${INPUT}"
+
+shift || true
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --width) WIDTH="${2:-}"; shift 2 ;;
+    --fps) FPS="${2:-}"; shift 2 ;;
+    --color) COLOR=1; shift ;;
+    --no-cache) CACHE=0; shift ;;
+    -h|--help)
+      sed -n '1,40p' "$0"
+      exit 0
+      ;;
+    *)
+      die "Unknown option: $1"
+      ;;
+  esac
+done
+
+need ffmpeg
+need jp2a
+
+# Validate numeric args
+[[ "$WIDTH" =~ ^[0-9]+$ ]] || die "--width must be an integer"
+[[ "$FPS" =~ ^[0-9]+$ ]] || die "--fps must be an integer"
+(( WIDTH >= 20 )) || die "--width too small"
+(( FPS >= 1 )) || die "--fps too small"
+
+BASE="$(basename "$INPUT")"
+WORKDIR="$(mktemp -d "/tmp/ascii_${BASE}.XXXXXX")"
+FRAMES_DIR="$WORKDIR/frames"
+ASCII_DIR="$WORKDIR/ascii"
+mkdir -p "$FRAMES_DIR" "$ASCII_DIR"
+
+cleanup() {
+  # restore cursor
+  printf "\033[?25h" || true
+  if [[ "$CACHE" -eq 0 ]]; then
+    rm -rf "$WORKDIR" || true
+  else
+    echo
+    echo "Cached output kept at: $WORKDIR"
+    echo "ASCII frames: $ASCII_DIR"
+  fi
+}
+trap cleanup EXIT
+
+echo "Working dir: $WORKDIR"
+echo "Extracting frames @ ${FPS} fps…"
+
+# Extract frames, scaled for terminal use.
+# Note: terminal characters are taller than wide; jp2a accounts reasonably well,
+# but you can experiment with WIDTH and font size.
+ffmpeg -hide_banner -loglevel error \
+  -i "$INPUT" \
+  -vf "fps=${FPS},scale=${WIDTH}:-1" \
+  "$FRAMES_DIR/frame_%06d.png"
+
+echo "Converting frames to ASCII (width=${WIDTH})…"
+
+JP2A_ARGS=(--width="$WIDTH")
+if [[ "$COLOR" -eq 1 ]]; then
+  JP2A_ARGS+=(--colors)
+fi
+
+# Detect number of CPU cores for parallel processing
+if command -v nproc >/dev/null 2>&1; then
+  NCPU="$(nproc)"
+elif command -v sysctl >/dev/null 2>&1; then
+  NCPU="$(sysctl -n hw.ncpu)"
+else
+  NCPU=4
+fi
+
+# Convert all frames to text files (in parallel)
+convert_frame() {
+  local f="$1"
+  local width="$2"
+  local color="$3"
+  local ascii_dir="$4"
+  local out="$ascii_dir/$(basename "$f" .png).txt"
+  local args=(--width="$width")
+  if [[ "$color" -eq 1 ]]; then
+    args+=(--colors)
+  fi
+  jp2a "${args[@]}" "$f" > "$out"
+}
+export -f convert_frame
+
+find "$FRAMES_DIR" -name 'frame_*.png' -print0 | \
+  xargs -0 -P "$NCPU" -I{} bash -c 'convert_frame "$@"' _ {} "$WIDTH" "$COLOR" "$ASCII_DIR"
+
+# Playback
+FRAME_DELAY="$(awk "BEGIN {printf \"%.6f\", 1.0/$FPS}")"
+
+echo "Playing in terminal… (Ctrl-C to stop)"
+# hide cursor
+printf "\033[?25l"
+# clear screen once
+printf "\033[2J"
+
+# Faster than `clear`: move cursor to home each frame.
+for f in "$ASCII_DIR"/frame_*.txt; do
+  printf "\033[H"
+  cat "$f"
+  sleep "$FRAME_DELAY"
+done
