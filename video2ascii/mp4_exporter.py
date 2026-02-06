@@ -611,6 +611,7 @@ def export_mp4(
         logger.debug("Using H.265/HEVC codec")
         ffmpeg_cmd.extend([
             "-c:v", "libx265",
+            "-tag:v", "hvc1",  # Use hvc1 tag for QuickTime compatibility
             "-pix_fmt", "yuv420p",
             "-crf", "18",  # High quality
             "-preset", "medium",  # Balance between speed and compression
