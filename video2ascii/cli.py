@@ -1,6 +1,7 @@
 """Command-line interface."""
 
 import argparse
+import logging
 import sys
 import tempfile
 from pathlib import Path
@@ -10,6 +11,9 @@ from video2ascii.converter import check_ffmpeg, extract_frames, convert_all, CHA
 from video2ascii.exporter import export
 from video2ascii.mp4_exporter import export_mp4
 from video2ascii.player import play
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -119,7 +123,14 @@ Examples:
         "--export-mp4",
         type=Path,
         metavar="FILE",
-        help="Export ASCII frames as MP4 video file",
+        help="Export ASCII frames as MP4 video file (H.265/HEVC encoding)",
+    )
+    
+    parser.add_argument(
+        "--export-prores422",
+        type=Path,
+        metavar="FILE",
+        help="Export ASCII frames as video file using ProRes 422 HQ codec",
     )
     
     parser.add_argument(
@@ -136,12 +147,34 @@ Examples:
     )
     
     parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose/debug logging",
+    )
+    
+    parser.add_argument(
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
     )
     
     args = parser.parse_args()
+    
+    # Configure logging based on verbose flag
+    if args.verbose:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(levelname)s: %(message)s",
+        )
+        # Suppress noisy low-level library logging
+        logging.getLogger("PIL").setLevel(logging.WARNING)
+        logging.getLogger("PIL.PngImagePlugin").setLevel(logging.WARNING)
+    else:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(message)s",
+        )
     
     # Validate arguments
     if not args.input.exists():
@@ -168,16 +201,21 @@ def main():
     """Main entry point."""
     args = parse_args()
     
+    logger.info(f"Input file: {args.input}")
+    logger.debug(f"Arguments: width={args.width}, fps={args.fps}, color={args.color}, "
+                 f"charset={args.charset}, crt={args.crt}, edge={args.edge}, invert={args.invert}")
+    
     # Check dependencies
+    logger.debug("Checking ffmpeg availability...")
     check_ffmpeg()
     
     # Create working directory
     base_name = args.input.stem
     work_dir = Path(tempfile.mkdtemp(prefix=f"ascii_{base_name}_"))
+    logger.info(f"Working dir: {work_dir}")
     
     try:
-        print(f"Working dir: {work_dir}")
-        print(f"Extracting frames @ {args.fps} fps…")
+        logger.info(f"Extracting frames @ {args.fps} fps…")
         
         # Extract frames
         frame_paths = extract_frames(
@@ -188,7 +226,10 @@ def main():
             crt=args.crt,
         )
         
-        print(f"Converting {len(frame_paths)} frames to ASCII (width={args.width})…")
+        logger.info(f"Extracted {len(frame_paths)} frames")
+        logger.debug(f"Frame paths: {[str(p) for p in frame_paths[:3]]}..." if len(frame_paths) > 3 else f"Frame paths: {[str(p) for p in frame_paths]}")
+        
+        logger.info(f"Converting {len(frame_paths)} frames to ASCII (width={args.width}, charset={args.charset})…")
         
         # Convert to ASCII
         frames = convert_all(
@@ -202,13 +243,19 @@ def main():
             charset=args.charset,
         )
         
+        logger.info(f"Converted {len(frames)} frames to ASCII")
+        
         # Export modes
         if args.export:
-            print(f"Packaging {len(frames)} frames into: {args.export}")
+            logger.info(f"Packaging {len(frames)} frames into: {args.export}")
             export(frames, args.export, args.fps, args.crt)
             return
         
         if args.export_mp4:
+            # Calculate target width for MP4 export (scale up for better quality)
+            # Use a reasonable HD width, scaling based on ASCII width
+            target_mp4_width = min(1920, max(1280, args.width * 16))  # Scale up from character width
+            logger.debug(f"MP4 target width: {target_mp4_width} (scaled from ASCII width {args.width})")
             export_mp4(
                 frames,
                 args.export_mp4,
@@ -217,18 +264,38 @@ def main():
                 crt=args.crt,
                 work_dir=work_dir,
                 charset=args.charset,
+                target_width=target_mp4_width,
+                codec="h265",
+            )
+            return
+        
+        if args.export_prores422:
+            # Calculate target width for ProRes export (scale up for better quality)
+            # Use a reasonable HD width, scaling based on ASCII width
+            target_mp4_width = min(1920, max(1280, args.width * 16))  # Scale up from character width
+            logger.debug(f"ProRes 422 target width: {target_mp4_width} (scaled from ASCII width {args.width})")
+            export_mp4(
+                frames,
+                args.export_prores422,
+                args.fps,
+                color=args.color,
+                crt=args.crt,
+                work_dir=work_dir,
+                charset=args.charset,
+                target_width=target_mp4_width,
+                codec="prores422",
             )
             return
         
         # Playback mode
-        print("Playing in terminal… (Ctrl-C to stop)")
+        logger.info("Playing in terminal… (Ctrl-C to stop)")
         if args.loop:
-            print("(Looping enabled)")
+            logger.info("(Looping enabled)")
         if args.crt:
-            print("(CRT mode: 80 columns, green phosphor)")
+            logger.info("(CRT mode: 80 columns, green phosphor)")
         if args.charset.lower() == "petscii":
-            print("(PETSCII mode: For best results, use KreativeKorp Pet Me 64 fonts)")
-            print("  Install: https://www.kreativekorp.com/software/fonts/c64/")
+            logger.info("(PETSCII mode: For best results, use KreativeKorp Pet Me 64 fonts)")
+            logger.info("  Install: https://www.kreativekorp.com/software/fonts/c64/")
         
         play(
             frames,
@@ -242,12 +309,12 @@ def main():
     finally:
         # Cleanup
         if args.no_cache:
+            logger.debug(f"Cleaning up work directory: {work_dir}")
             import shutil
             shutil.rmtree(work_dir, ignore_errors=True)
         else:
-            print()
-            print(f"Cached output kept at: {work_dir}")
-            print(f"ASCII frames: {work_dir / 'frames'}")
+            logger.info(f"Cached output kept at: {work_dir}")
+            logger.info(f"ASCII frames: {work_dir / 'frames'}")
 
 
 if __name__ == "__main__":

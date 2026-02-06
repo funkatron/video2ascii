@@ -8,10 +8,10 @@ Convert any video to ASCII art and play it in your terminal.
 # Classic ASCII
 video2ascii your-video.mp4
 
-# Retro CRT mode - 80 columns, green phosphor glow
+# Retro CRT mode - 80 columns, green phosphor color
 video2ascii your-video.mp4 --crt
 
-# Artistic edge detection
+# Edge detection (sketch-like effect)
 video2ascii your-video.mp4 --edge --invert
 ```
 
@@ -77,10 +77,10 @@ video2ascii input.mp4 --crt
 # Loop forever at 1.5x speed with progress bar
 video2ascii input.mp4 --loop --speed 1.5 --progress
 
-# Artistic edge detection (great for music videos)
+# Edge detection (sketch-like effect)
 video2ascii input.mp4 --edge --invert --color
 
-# Combine for ultimate retro experience
+# Combine CRT with loop and progress
 video2ascii input.mp4 --crt --loop --progress
 
 # Commodore 64 PETSCII style
@@ -90,8 +90,11 @@ video2ascii input.mp4 --charset petscii --crt
 video2ascii input.mp4 --export movie.sh
 ./movie.sh --loop --crt
 
-# Export as MP4 video file
+# Export as MP4 video file (H.265/HEVC encoding)
 video2ascii input.mp4 --charset petscii --crt --export-mp4 ascii-video.mp4
+
+# Export as ProRes 422 HQ (larger file size)
+video2ascii input.mp4 --color --charset braille --export-prores422 ascii-prores.mov
 ```
 
 ### Options
@@ -101,17 +104,18 @@ video2ascii input.mp4 --charset petscii --crt --export-mp4 ascii-video.mp4
 | `--width N` | ASCII output width in characters | 160 |
 | `--fps N` | Frames per second to extract/play | 12 |
 | `--color` | Enable ANSI color output | off |
-| `--crt` | Retro CRT mode: 80 columns, green phosphor | off |
+| `--crt` | Retro CRT mode: 80 columns, green phosphor color | off |
 | `--loop` | Loop playback forever | off |
 | `--speed N` | Playback speed multiplier (0.5, 1.0, 2.0, etc.) | 1.0 |
 | `--invert` | Invert brightness (dark mode friendly) | off |
-| `--edge` | Edge detection for artistic effect | off |
+| `--edge` | Edge detection for sketch-like effect | off |
 | `--edge-threshold N` | Edge detection threshold (0.0-1.0) | 0.15 |
 | `--charset NAME` | Character set: classic, blocks, braille, dense, simple, petscii | classic |
 | `--aspect-ratio N` | Terminal character aspect ratio correction | 1.2 |
 | `--progress` | Show progress bar during playback | off |
 | `--export FILE` | Package as standalone playable script | - |
-| `--export-mp4 FILE` | Export ASCII frames as MP4 video file | - |
+| `--export-mp4 FILE` | Export ASCII frames as MP4 video file (H.265/HEVC encoding) | - |
+| `--export-prores422 FILE` | Export ASCII frames as video file using ProRes 422 HQ codec | - |
 | `--no-cache` | Delete temp files after playback | keep |
 | `-h, --help` | Show help message | - |
 
@@ -119,29 +123,29 @@ video2ascii input.mp4 --charset petscii --crt --export-mp4 ascii-video.mp4
 
 ### CRT Mode (`--crt`)
 
-Activates a retro terminal aesthetic:
+Applies retro terminal settings:
 - Fixed 80-column width (like classic terminals)
-- Green phosphor color (#33FF33)
+- Green phosphor color tint (#33FF33) - applies green color to all text
 - Inverted colors (light on dark, like real CRTs)
-- Enhanced contrast
+- Enhanced contrast via unsharp filter during frame extraction
 
-Perfect for that 1980s computer terminal vibe.
+Simulates 1980s computer terminal appearance.
 
 ### Edge Detection (`--edge`)
 
-Uses improved Sobel-based edge detection with Gaussian blur and thresholding to extract clean outlines from the video. Creates an artistic, sketch-like effect. Combine with `--invert` for best results. Use `--edge-threshold` to control sensitivity (lower = more edges).
+Uses Sobel-based edge detection with Gaussian blur and thresholding to extract clean outlines from the video. Creates a sketch-like effect by highlighting edges and suppressing other details. Combine with `--invert` for improved contrast. Use `--edge-threshold` to control sensitivity (lower = more edges).
 
 ### Character Sets (`--charset`)
 
-Choose from different character sets for different visual styles:
+Character sets available:
 
 - **`classic`** (default): Balanced traditional ASCII art (`" .:-=+*#%@"`)
 - **`blocks`**: Bold Unicode block characters (`" ░▒▓█"`)
-- **`braille`**: High-resolution braille characters for maximum detail
+- **`braille`**: Braille characters (Unicode U+2800-U+28FF)
 - **`dense`**: Many characters for fine gradients and detail
-- **`simple`**: Minimal clean look (`" .oO0"`)
+- **`simple`**: Minimal character set (`" .oO0"`)
 - **`petscii`**: True Commodore 64 PETSCII graphics characters using Unicode 13.0+ Symbols for Legacy Computing block
-  - **Tip**: For authentic Commodore 64 look, use [KreativeKorp Pet Me 64 fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal. These fonts properly render the PETSCII Unicode characters.
+  - For Commodore 64 appearance, use [KreativeKorp Pet Me 64 fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal. These fonts render the PETSCII Unicode characters.
 
 You can also provide a custom character string ordered from darkest to lightest.
 
@@ -164,11 +168,11 @@ video2ascii video.mp4 --crt --export retro_movie.sh
 ./retro_movie.sh --loop --speed 1.5
 ```
 
-Great for:
+Use cases:
 - Sharing ASCII art animations
 - Terminal screensavers
 - Embedding in dotfiles or scripts
-- Fun email attachments
+- Email attachments
 
 #### MP4 Video (`--export-mp4 FILE`)
 
@@ -176,18 +180,28 @@ Renders ASCII frames as images and creates an MP4 video file:
 - Renders ASCII art using system monospace fonts (automatically finds PetME64, Iosevka, Menlo, Courier, or DejaVu)
 - Preserves color information (if `--color` was used)
 - Applies CRT green tint (if `--crt` was used)
-- Creates high-quality MP4 file (H.264, CRF 18) playable in any video player
-- When using `--charset petscii`, automatically prefers PetME64 font for authentic Commodore 64 rendering
+- Creates MP4 file playable in any video player
+- When using `--charset petscii`, automatically prefers PetME64 font for Commodore 64 rendering
+
+**Codec Options:**
+
+- `--export-mp4 FILE`: Uses H.265/HEVC encoding (default, better compression, smaller file size)
+- `--export-prores422 FILE`: Uses ProRes 422 HQ encoding (larger file size, suitable for video editing)
 
 **Font Support:**
 The MP4 exporter automatically searches for fonts in common locations:
 - **PetME64** (KreativeKorp): `~/Library/Fonts/`, `/Library/Fonts/` (macOS) or `~/.fonts/`, `/usr/share/fonts/` (Linux)
 - **Iosevka**: Same locations as PetME64
+- **VT323**: Retro terminal font
+- **IBM Plex Mono**: Monospace font
 - **System fonts**: Menlo, Courier, DejaVu Sans Mono, Liberation Mono
 
 ```bash
-# Export as MP4
+# Export as MP4 (H.265/HEVC - default)
 video2ascii video.mp4 --charset petscii --crt --export-mp4 output.mp4
+
+# Export as ProRes 422 HQ
+video2ascii video.mp4 --color --charset braille --export-prores422 output-prores.mov
 
 # With color
 video2ascii video.mp4 --color --export-mp4 colorful-ascii.mp4
@@ -196,7 +210,7 @@ video2ascii video.mp4 --color --export-mp4 colorful-ascii.mp4
 video2ascii video.mp4 --charset petscii --export-mp4 petscii-video.mp4
 ```
 
-Great for:
+Use cases:
 - Sharing on social media
 - Embedding in websites
 - Creating demos or presentations
@@ -210,12 +224,12 @@ Great for:
 
 ## Tips
 
-- **CRT Mode**: Works best in a terminal with a dark background. Try a retro font like "VT323" or "IBM Plex Mono" for extra authenticity.
-- **PETSCII Mode**: For the most authentic Commodore 64 experience, install and use the [KreativeKorp Pet Me 64 fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal. These fonts properly render the official PETSCII Unicode characters (Unicode 13.0+ Symbols for Legacy Computing block).
+- **CRT Mode**: Works best in a terminal with a dark background. Retro fonts like "VT323" or "IBM Plex Mono" can enhance the appearance.
+- **PETSCII Mode**: Install and use the [KreativeKorp Pet Me 64 fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal. These fonts render the PETSCII Unicode characters (Unicode 13.0+ Symbols for Legacy Computing block).
 - **Width**: For CRT mode, 80 is classic. For modern displays, try 120-200 depending on your terminal size.
 - **FPS**: Higher FPS = smoother playback but more processing. 10-15 FPS works well for most content.
 - **Speed**: Use `--speed 0.5` for slow-mo, `--speed 2` for double-speed.
-- **Edge + Color**: Combining edge detection with color can create interesting neon-like effects.
+- **Edge + Color**: Combining edge detection with color preserves color information along detected edges.
 - **Aspect Ratio**: Terminal characters are roughly 2:1 height:width, so the tool automatically adjusts frame height for proper proportions.
 
 ## Performance

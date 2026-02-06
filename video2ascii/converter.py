@@ -1,5 +1,6 @@
 """Frame extraction and ASCII conversion."""
 
+import logging
 import subprocess
 import sys
 from pathlib import Path
@@ -7,6 +8,8 @@ from multiprocessing import Pool
 from typing import Optional
 
 from PIL import Image, ImageFilter, ImageEnhance
+
+logger = logging.getLogger(__name__)
 
 
 def check_ffmpeg() -> None:
@@ -41,6 +44,7 @@ def extract_frames(
     Returns:
         List of paths to extracted frame PNG files
     """
+    logger.debug(f"Extracting frames from {input_path} (fps={fps}, width={width}, crt={crt})")
     frames_dir = work_dir / "frames"
     frames_dir.mkdir(exist_ok=True)
     
@@ -50,11 +54,15 @@ def extract_frames(
     if crt:
         # Add slight blur and boost contrast for CRT feel
         filters.append("unsharp=5:5:1.5:5:5:0.0")
+        logger.debug("Added CRT enhancement filter (unsharp)")
     
     filter_chain = ",".join(filters)
     output_pattern = str(frames_dir / "frame_%06d.png")
+    logger.debug(f"FFmpeg filter chain: {filter_chain}")
+    logger.debug(f"Output pattern: {output_pattern}")
     
     # Extract frames
+    logger.debug("Running ffmpeg to extract frames...")
     subprocess.run(
         [
             "ffmpeg",
@@ -69,6 +77,7 @@ def extract_frames(
     
     # Return sorted list of frame files
     frame_files = sorted(frames_dir.glob("frame_*.png"))
+    logger.debug(f"Extracted {len(frame_files)} frames")
     return frame_files
 
 
@@ -250,6 +259,7 @@ def detect_edges(img: Image.Image, color: bool = False, threshold: float = 0.15)
 
 
 def convert_frame(args: tuple) -> tuple[int, str]:
+    """Convert a single frame to ASCII (called by multiprocessing)."""
     """
     Convert a single frame to ASCII (for parallel processing).
     
@@ -300,6 +310,9 @@ def convert_all(
     Returns:
         List of ASCII art strings, sorted by frame number
     """
+    logger.debug(f"Converting {len(frame_paths)} frames (width={width}, color={color}, "
+                 f"invert={invert}, edge={edge}, charset={charset}, aspect_ratio={aspect_ratio})")
+    
     # Prepare arguments for parallel processing
     args_list = [
         (path, width, color, invert, edge, aspect_ratio, edge_threshold, charset)
@@ -307,9 +320,23 @@ def convert_all(
     ]
     
     # Convert in parallel
-    with Pool() as pool:
+    # Use 'fork' on Unix systems if available, fallback to 'spawn' on macOS
+    # This avoids issues when the module is imported or run from stdin
+    import multiprocessing
+    try:
+        # Try to use fork if available (faster, works better with imports)
+        ctx = multiprocessing.get_context('fork')
+        logger.debug("Using multiprocessing context: fork")
+    except ValueError:
+        # Fallback to spawn (required on macOS, but needs proper __main__ protection)
+        ctx = multiprocessing.get_context('spawn')
+        logger.debug("Using multiprocessing context: spawn")
+    
+    logger.debug(f"Starting parallel conversion with {ctx.cpu_count()} workers")
+    with ctx.Pool() as pool:
         results = pool.map(convert_frame, args_list)
     
     # Sort by frame number and return ASCII strings
     results.sort(key=lambda x: x[0])
+    logger.debug(f"Completed conversion of {len(results)} frames")
     return [ascii_str for _, ascii_str in results]
