@@ -105,7 +105,7 @@ video2ascii input.mp4 --export movie.sh
 | `--edge` | Edge detection for artistic effect | off |
 | `--edge-threshold N` | Edge detection threshold (0.0-1.0) | 0.15 |
 | `--charset NAME` | Character set: classic, blocks, braille, dense, simple, petscii | classic |
-| `--aspect-ratio N` | Terminal character aspect ratio correction | 1.2 |
+| `-- N` | Terminal character aspect ratio correction | 1.2 |
 | `--progress` | Show progress bar during playback | off |
 | `--export FILE` | Package as standalone playable script | - |
 | `--no-cache` | Delete temp files after playback | keep |
