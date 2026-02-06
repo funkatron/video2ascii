@@ -143,7 +143,7 @@ video2ascii input.mp4 --color --charset braille --export-prores422 ascii-prores.
 Applies retro terminal settings:
 - Fixed 80-column width (like classic terminals)
 - Green phosphor color tint (#33FF33) - applies green color to all text
-- Inverted colors (light on dark, like real CRTs)
+- Light text on dark background
 - Enhanced contrast via unsharp filter during frame extraction
 
 Simulates 1980s computer terminal appearance.
