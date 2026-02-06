@@ -1,0 +1,14 @@
+[project]
+name = "video2ascii"
+version = "2.0.0"
+description = "Convert videos to ASCII art and play them in your terminal"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["Pillow>=10.0.0"]
+
+[project.scripts]
+video2ascii = "video2ascii.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
