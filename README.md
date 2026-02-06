@@ -281,4 +281,4 @@ Cached frames are stored in `/tmp/ascii_FILENAME.XXXXXX/` by default. Use `--no-
 
 ## License
 
-MIT
+BSD 3-Clause
