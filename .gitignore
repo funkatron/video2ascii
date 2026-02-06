@@ -41,3 +41,11 @@ Thumbs.db
 *.bak
 *.tmp
 /tmp/
+
+# Test coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+coverage.xml
+*.cover
