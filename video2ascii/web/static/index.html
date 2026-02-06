@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>video2ascii</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Helvetica Neue", HelveticaNeue, "TeX Gyre Heros", TeXGyreHeros, FreeSans, "Nimbus Sans L", "Liberation Sans", Arimo, Helvetica, Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            padding: 0;
+            line-height: 1.5;
+            font-size: 16px;
+            font-weight: 400;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            background: #fff;
+            color: #000;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            font-size: 0.875rem;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 25px;
+            color: #000;
+        }
+        
+        .upload-area {
+            border: 1px dashed #ccc;
+            background: rgba(0, 0, 0, 0.02);
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 25px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .upload-area:hover {
+            background: rgba(0, 0, 0, 0.05);
+            border-color: #000;
+        }
+        
+        .upload-area.dragover {
+            background: rgba(0, 0, 0, 0.08);
+            border-color: #000;
+        }
+        
+        .upload-area input[type="file"] {
+            display: none;
+        }
+        
+        .upload-area p {
+            font-size: 0.7rem;
+            color: rgba(0, 0, 0, 0.6);
+        }
+        
+        #fileInfo {
+            margin-top: 6px;
+            font-size: 0.65rem;
+            color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .presets {
+            margin-bottom: 25px;
+        }
+        
+        .presets h2 {
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 10px;
+            color: #000;
+        }
+        
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .preset-btn {
+            background: #fff;
+            color: #000;
+            border: 1px solid #000;
+            padding: 8px 12px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+        
+        .preset-btn:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        
+        .preset-btn.active {
+            background: #000;
+            color: #fff;
+            font-weight: 600;
+        }
+        
+        .preset-btn.active:hover {
+            background: #000;
+            color: #fff;
+        }
+        
+        .settings-section {
+            margin-bottom: 20px;
+        }
+        
+        .settings-section h2 {
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 12px;
+            color: #000;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .settings-section h2::after {
+            content: '▼';
+            font-size: 0.6rem;
+            transition: transform 0.2s;
+        }
+        
+        .settings-section.collapsed h2::after {
+            transform: rotate(-90deg);
+        }
+        
+        .settings-section.collapsed .settings-content {
+            display: none;
+        }
+        
+        .settings-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .setting-group label {
+            font-size: 0.65rem;
+            color: #000;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .setting-group input[type="range"] {
+            width: 100%;
+            height: 2px;
+            background: #ddd;
+            accent-color: #000;
+        }
+        
+        .setting-group input[type="number"],
+        .setting-group select {
+            background: #fff;
+            border: 1px solid #ccc;
+            color: #000;
+            padding: 5px 8px;
+            font-size: 0.7rem;
+            font-family: inherit;
+            width: 100%;
+        }
+        
+        .setting-group input[type="number"]:focus,
+        .setting-group select:focus {
+            outline: none;
+            border-color: #000;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .setting-group input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            accent-color: #000;
+            cursor: pointer;
+        }
+        
+        .checkbox-group label {
+            cursor: pointer;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 500;
+        }
+        
+        button {
+            background: #000;
+            color: #fff;
+            border: 1px solid #000;
+            padding: 10px 20px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 5px;
+        }
+        
+        button:hover:not(:disabled) {
+            background: #fff;
+            color: #000;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            border-color: #ccc;
+            color: #666;
+            cursor: not-allowed;
+        }
+        
+        .main-area {
+            display: flex;
+            flex-direction: column;
+            background: #000;
+            overflow: hidden;
+        }
+        
+        .preview-area {
+            flex: 1;
+            background: #000;
+            padding: 40px;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .preview-area pre {
+            margin: 0;
+            font-size: 10px;
+            line-height: 1.1;
+            white-space: pre;
+            overflow: visible;
+            color: #fff;
+            font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+            text-align: center;
+        }
+        
+        .preview-placeholder {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 0.875rem;
+            text-align: center;
+            font-family: inherit;
+        }
+        
+        .controls-bar {
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .controls-bar button {
+            width: auto;
+            margin: 0;
+            padding: 6px 14px;
+            font-size: 0.7rem;
+        }
+        
+        .controls-bar input[type="range"] {
+            flex: 1;
+            min-width: 150px;
+            height: 2px;
+            accent-color: #fff;
+        }
+        
+        .controls-bar span {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.7);
+            min-width: 80px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 3px;
+            background: rgba(0, 0, 0, 0.1);
+            margin-bottom: 8px;
+            overflow: hidden;
+            border-radius: 2px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #000;
+            width: 0%;
+            transition: width 0.2s ease;
+        }
+        
+        .progress-text {
+            font-size: 0.7rem;
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .error {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            padding: 10px 12px;
+            margin-bottom: 15px;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .export-buttons button {
+            flex: 1;
+            margin: 0;
+            padding: 6px 12px;
+            font-size: 0.65rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>video2ascii</h1>
+
+            <div class="upload-area" id="uploadArea">
+                <p>↑ Upload</p>
+                <input type="file" id="fileInput" accept="video/*">
+                <div id="fileInfo"></div>
+            </div>
+
+            <div class="presets">
+                <h2>Presets</h2>
+                <div class="preset-buttons">
+                    <button class="preset-btn" data-preset="classic">Classic</button>
+                    <button class="preset-btn" data-preset="crt">CRT</button>
+                    <button class="preset-btn" data-preset="sketch">Sketch</button>
+                    <button class="preset-btn" data-preset="minimal">Minimal</button>
+                </div>
+            </div>
+
+            <div class="settings-section" id="basicSettings">
+                <h2>Basic</h2>
+                <div class="settings-content">
+                    <div class="setting-group">
+                        <label for="width">Width: <span id="widthValue">160</span></label>
+                        <input type="range" id="width" min="20" max="320" value="160">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="fps">FPS: <span id="fpsValue">12</span></label>
+                        <input type="range" id="fps" min="1" max="30" value="12">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="charset">Character Set</label>
+                        <select id="charset">
+                            <option value="classic">Classic</option>
+                            <option value="blocks">Blocks</option>
+                            <option value="braille">Braille</option>
+                            <option value="dense">Dense</option>
+                            <option value="simple">Simple</option>
+                            <option value="petscii">PETSCII</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section collapsed" id="advancedSettings">
+                <h2>Advanced</h2>
+                <div class="settings-content">
+                    <div class="setting-group">
+                        <label for="aspectRatio">Aspect Ratio</label>
+                        <input type="number" id="aspectRatio" min="0.5" max="2.0" step="0.1" value="1.2">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="color">
+                            <label for="color">Color</label>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="crt">
+                            <label for="crt">CRT Mode</label>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="invert">
+                            <label for="invert">Invert</label>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="edge">
+                            <label for="edge">Edge Detection</label>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group" id="edgeThresholdGroup" style="display: none;">
+                        <label for="edgeThreshold">Edge Threshold: <span id="edgeThresholdValue">0.15</span></label>
+                        <input type="range" id="edgeThreshold" min="0.0" max="1.0" step="0.01" value="0.15">
+                    </div>
+                </div>
+            </div>
+
+            <button id="convertBtn" disabled>Convert</button>
+
+            <div id="progressSection" class="hidden" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(0, 0, 0, 0.1);">
+                <div class="progress-text" id="progressText">Processing...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+
+            <div id="errorMessage" class="error hidden"></div>
+
+            <div class="export-buttons" id="exportButtons" style="display: none;">
+                <button id="exportShBtn">.sh</button>
+                <button id="exportMp4Btn">.mp4</button>
+                <button id="copyFrameBtn">Copy</button>
+            </div>
+        </div>
+
+        <div class="main-area">
+            <div class="preview-area" id="previewArea">
+                <pre id="previewContent" class="preview-placeholder">Upload a video to begin</pre>
+            </div>
+            
+            <div class="controls-bar" id="playbackControls" style="display: none;">
+                <button id="playBtn">Play</button>
+                <button id="pauseBtn">Pause</button>
+                <button id="loopBtn">Loop</button>
+                <input type="range" id="scrubber" min="0" max="0" value="0">
+                <span id="frameInfo">Frame 0 / 0</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentJobId = null;
+        let frames = [];
+        let currentFrameIndex = 0;
+        let isPlaying = false;
+        let isLooping = false;
+        let playbackInterval = null;
+        let fps = 12;
+        let previewTimeout = null;
+        
+        // Presets
+        const presets = {
+            classic: { width: 160, fps: 12, charset: 'classic', color: false, crt: false, invert: false, edge: false },
+            crt: { width: 80, fps: 12, charset: 'classic', color: true, crt: true, invert: false, edge: false },
+            sketch: { width: 160, fps: 12, charset: 'classic', color: false, crt: false, invert: true, edge: true },
+            minimal: { width: 120, fps: 10, charset: 'simple', color: false, crt: false, invert: false, edge: false }
+        };
+        
+        // Apply preset
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const preset = presets[btn.dataset.preset];
+                applyPreset(preset);
+            });
+        });
+        
+        function applyPreset(preset) {
+            document.getElementById('width').value = preset.width;
+            document.getElementById('widthValue').textContent = preset.width;
+            document.getElementById('fps').value = preset.fps;
+            document.getElementById('fpsValue').textContent = preset.fps;
+            document.getElementById('charset').value = preset.charset;
+            document.getElementById('color').checked = preset.color;
+            document.getElementById('crt').checked = preset.crt;
+            document.getElementById('invert').checked = preset.invert;
+            document.getElementById('edge').checked = preset.edge;
+            document.getElementById('edgeThresholdGroup').style.display = preset.edge ? 'flex' : 'none';
+            updateLivePreview();
+        }
+        
+        // Collapsible sections
+        document.querySelectorAll('.settings-section h2').forEach(h2 => {
+            h2.addEventListener('click', () => {
+                h2.parentElement.classList.toggle('collapsed');
+            });
+        });
+        
+        // Upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const convertBtn = document.getElementById('convertBtn');
+        
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+        
+        function handleFileSelect(file) {
+            if (!file.type.startsWith('video/')) {
+                showError('Please select a video file');
+                return;
+            }
+            fileInfo.textContent = file.name;
+            convertBtn.disabled = false;
+            updateLivePreview();
+        }
+        
+        // Live preview updates
+        function updateLivePreview() {
+            if (!fileInput.files[0]) return;
+            
+            clearTimeout(previewTimeout);
+            previewTimeout = setTimeout(() => {
+                // Generate preview from first frame if we have frames
+                if (frames.length > 0 && currentFrameIndex < frames.length) {
+                    document.getElementById('previewContent').innerHTML = frames[currentFrameIndex];
+                    document.getElementById('previewContent').classList.remove('preview-placeholder');
+                }
+            }, 300);
+        }
+        
+        // Settings updates
+        document.getElementById('width').addEventListener('input', (e) => {
+            document.getElementById('widthValue').textContent = e.target.value;
+            updateLivePreview();
+        });
+        
+        document.getElementById('fps').addEventListener('input', (e) => {
+            document.getElementById('fpsValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('charset').addEventListener('change', updateLivePreview);
+        document.getElementById('color').addEventListener('change', updateLivePreview);
+        document.getElementById('crt').addEventListener('change', updateLivePreview);
+        document.getElementById('invert').addEventListener('change', updateLivePreview);
+        document.getElementById('edge').addEventListener('change', (e) => {
+            document.getElementById('edgeThresholdGroup').style.display = e.target.checked ? 'flex' : 'none';
+            updateLivePreview();
+        });
+        
+        document.getElementById('edgeThreshold').addEventListener('input', (e) => {
+            document.getElementById('edgeThresholdValue').textContent = e.target.value;
+            updateLivePreview();
+        });
+        
+        // Click preview to play/pause
+        document.getElementById('previewArea').addEventListener('click', () => {
+            if (frames.length > 0) {
+                if (isPlaying) {
+                    pause();
+                } else {
+                    document.getElementById('playBtn').click();
+                }
+            }
+        });
+        
+        // Convert button
+        convertBtn.addEventListener('click', async () => {
+            if (!fileInput.files[0]) {
+                showError('Please select a video file first');
+                return;
+            }
+            
+            // Clear previous conversion state
+            pause();
+            frames = [];
+            currentFrameIndex = 0;
+            currentJobId = null;
+            
+            // Close any existing SSE connection
+            if (progressEventSource) {
+                progressEventSource.close();
+                progressEventSource = null;
+            }
+            
+            // Reset UI to show processing state
+            const previewEl = document.getElementById('previewContent');
+            previewEl.innerHTML = '<span class="preview-placeholder">Processing...</span>';
+            previewEl.classList.add('preview-placeholder');
+            document.getElementById('playbackControls').style.display = 'none';
+            document.getElementById('exportButtons').style.display = 'none';
+            
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('width', document.getElementById('width').value);
+            formData.append('fps', document.getElementById('fps').value);
+            formData.append('color', document.getElementById('color').checked);
+            formData.append('invert', document.getElementById('invert').checked);
+            formData.append('edge', document.getElementById('edge').checked);
+            formData.append('edge_threshold', document.getElementById('edgeThreshold').value);
+            formData.append('aspect_ratio', document.getElementById('aspectRatio').value);
+            formData.append('charset', document.getElementById('charset').value);
+            formData.append('crt', document.getElementById('crt').checked);
+            
+            // Show upload progress
+            document.getElementById('progressSection').classList.remove('hidden');
+            document.getElementById('errorMessage').classList.add('hidden');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            progressFill.style.width = '0%';
+            convertBtn.disabled = true;
+            
+            try {
+                const xhr = new XMLHttpRequest();
+                
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = (e.loaded / e.total) * 100;
+                        progressFill.style.width = percent + '%';
+                        const uploadedMB = (e.loaded / 1024 / 1024).toFixed(2);
+                        const totalMB = (e.total / 1024 / 1024).toFixed(2);
+                        progressText.textContent = `Uploading: ${uploadedMB} MB / ${totalMB} MB (${Math.round(percent)}%)`;
+                    }
+                });
+                
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        const data = JSON.parse(xhr.responseText);
+                        currentJobId = data.job_id;
+                        fps = parseInt(document.getElementById('fps').value);
+                        progressText.textContent = 'Upload complete. Processing...';
+                        streamProgress();
+                    } else {
+                        try {
+                            const error = JSON.parse(xhr.responseText);
+                            throw new Error(error.detail || 'Upload failed');
+                        } catch (e) {
+                            throw new Error(`Upload failed: ${xhr.statusText}`);
+                        }
+                    }
+                });
+                
+                xhr.addEventListener('error', () => {
+                    throw new Error('Upload failed: Network error');
+                });
+                
+                xhr.open('POST', '/api/convert');
+                xhr.send(formData);
+                
+            } catch (error) {
+                showError(error.message);
+                document.getElementById('progressSection').classList.add('hidden');
+                convertBtn.disabled = false;
+            }
+        });
+        
+        let progressEventSource = null;
+        
+        function streamProgress() {
+            if (!currentJobId) return;
+            
+            // Clean up any existing SSE connection
+            if (progressEventSource) {
+                progressEventSource.close();
+                progressEventSource = null;
+            }
+            
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            progressFill.style.width = '0%';
+            
+            progressEventSource = new EventSource(`/api/jobs/${currentJobId}/stream`);
+            
+            progressEventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    const progress = data.progress;
+                    
+                    if (progress && progress.total > 0) {
+                        const percent = (progress.current / progress.total) * 100;
+                        progressFill.style.width = percent + '%';
+                        progressText.textContent = `${progress.stage}: ${progress.current} / ${progress.total} (${Math.round(percent)}%)`;
+                    } else if (progress) {
+                        progressText.textContent = progress.stage;
+                    }
+                    
+                    if (data.status === 'completed') {
+                        if (progressEventSource) {
+                            progressEventSource.close();
+                            progressEventSource = null;
+                        }
+                        progressFill.style.width = '100%';
+                        progressText.textContent = 'Complete!';
+                        loadFrames().then(() => {
+                            document.getElementById('progressSection').classList.add('hidden');
+                            convertBtn.disabled = false;
+                        }).catch((error) => {
+                            console.error('Error loading frames:', error);
+                            showError('Failed to load frames: ' + error.message);
+                            document.getElementById('progressSection').classList.add('hidden');
+                            convertBtn.disabled = false;
+                        });
+                    } else if (data.status === 'error') {
+                        if (progressEventSource) {
+                            progressEventSource.close();
+                            progressEventSource = null;
+                        }
+                        showError(data.error || 'Conversion failed');
+                        document.getElementById('progressSection').classList.add('hidden');
+                        convertBtn.disabled = false;
+                    }
+                } catch (error) {
+                    console.error('Error parsing SSE data:', error);
+                }
+            };
+            
+            progressEventSource.onerror = (error) => {
+                console.error('SSE error:', error);
+                // Close on error to prevent leaks
+                if (progressEventSource && progressEventSource.readyState === EventSource.CLOSED) {
+                    progressEventSource.close();
+                    progressEventSource = null;
+                }
+            };
+        }
+        
+        async function loadFrames() {
+            try {
+                // Clean up any existing playback
+                pause();
+                
+                // Clear old frames
+                frames = [];
+                currentFrameIndex = 0;
+                
+                if (!currentJobId) {
+                    throw new Error('No job ID available');
+                }
+                
+                console.log('Loading frames for job:', currentJobId);
+                const response = await fetch(`/api/jobs/${currentJobId}/frames`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
+                    throw new Error(errorData.detail || 'Failed to fetch frames');
+                }
+                
+                const data = await response.json();
+                console.log('Received frames data:', { frameCount: data.frames?.length, fps: data.fps });
+                
+                // Verify we got frames
+                if (!data.frames || data.frames.length === 0) {
+                    throw new Error('No frames received from server');
+                }
+                
+                frames = data.frames;
+                fps = data.fps;
+                currentFrameIndex = 0;
+                
+                console.log('Loaded', frames.length, 'frames, starting playback');
+                console.log('First frame preview (first 100 chars):', frames[0]?.substring(0, 100));
+                
+                document.getElementById('scrubber').max = frames.length - 1;
+                document.getElementById('scrubber').value = 0;
+                document.getElementById('playbackControls').style.display = 'flex';
+                document.getElementById('exportButtons').style.display = 'flex';
+                
+                // Reset loop state
+                isLooping = false;
+                document.getElementById('loopBtn').textContent = 'Loop';
+                
+                // Display first frame immediately - ensure it's visible
+                console.log('Displaying frame 0');
+                displayFrame(0);
+                
+                // Double-check frame was displayed
+                setTimeout(() => {
+                    const previewContent = document.getElementById('previewContent').innerHTML;
+                    console.log('Preview content after displayFrame (first 200 chars):', previewContent.substring(0, 200));
+                    if (!previewContent || previewContent.trim() === '' || previewContent.includes('preview-placeholder')) {
+                        console.error('Frame not displayed! Trying again...');
+                        displayFrame(0);
+                    }
+                }, 100);
+                
+                // Auto-play and auto-loop
+                isLooping = true;
+                document.getElementById('loopBtn').textContent = 'Stop Loop';
+                isPlaying = true;
+                
+                // Clear any existing interval first
+                if (playbackInterval) {
+                    clearInterval(playbackInterval);
+                }
+                
+                const frameDelay = 1000 / fps;
+                console.log('Starting playback interval with delay:', frameDelay, 'ms');
+                
+                playbackInterval = setInterval(() => {
+                    if (!frames || frames.length === 0) {
+                        console.error('Frames array is empty during playback');
+                        pause();
+                        return;
+                    }
+                    currentFrameIndex++;
+                    if (currentFrameIndex >= frames.length) {
+                        currentFrameIndex = 0;
+                    }
+                    displayFrame(currentFrameIndex);
+                }, frameDelay);
+            } catch (error) {
+                console.error('Error in loadFrames:', error);
+                showError('Failed to load frames: ' + error.message);
+                document.getElementById('previewContent').innerHTML = '<span class="preview-placeholder">Error loading frames: ' + error.message + '</span>';
+                document.getElementById('previewContent').classList.add('preview-placeholder');
+            }
+        }
+        
+        function displayFrame(index) {
+            if (!frames || frames.length === 0) {
+                console.warn('displayFrame called but frames array is empty');
+                return;
+            }
+            if (index < 0 || index >= frames.length) {
+                console.warn('displayFrame called with invalid index:', index, 'frames.length:', frames.length);
+                return;
+            }
+            
+            currentFrameIndex = index;
+            
+            // Always update the preview - don't check if it changed
+            // This ensures re-conversions show new frames even if they look similar
+            const previewEl = document.getElementById('previewContent');
+            const frameContent = frames[index];
+            
+            if (!frameContent || frameContent.trim() === '') {
+                console.warn('Frame', index, 'is empty');
+                previewEl.innerHTML = '<span class="preview-placeholder">Empty frame</span>';
+            } else {
+                previewEl.innerHTML = frameContent;
+                previewEl.classList.remove('preview-placeholder');
+            }
+            
+            // Update scrubber
+            const scrubber = document.getElementById('scrubber');
+            if (scrubber) {
+                scrubber.value = index;
+            }
+            
+            // Update frame info
+            const frameInfo = document.getElementById('frameInfo');
+            if (frameInfo) {
+                frameInfo.textContent = `Frame ${index + 1} / ${frames.length}`;
+            }
+        }
+        
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (frames.length === 0) return;
+            
+            // Clear any existing interval first
+            pause();
+            
+            isPlaying = true;
+            playbackInterval = setInterval(() => {
+                currentFrameIndex++;
+                if (currentFrameIndex >= frames.length) {
+                    if (isLooping) {
+                        currentFrameIndex = 0;
+                    } else {
+                        pause();
+                        return;
+                    }
+                }
+                displayFrame(currentFrameIndex);
+            }, 1000 / fps);
+        });
+        
+        document.getElementById('pauseBtn').addEventListener('click', pause);
+        
+        function pause() {
+            isPlaying = false;
+            if (playbackInterval) {
+                clearInterval(playbackInterval);
+                playbackInterval = null;
+            }
+        }
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            pause();
+            if (progressEventSource) {
+                progressEventSource.close();
+                progressEventSource = null;
+            }
+        });
+        
+        document.getElementById('loopBtn').addEventListener('click', () => {
+            isLooping = !isLooping;
+            document.getElementById('loopBtn').textContent = isLooping ? 'Stop Loop' : 'Loop';
+        });
+        
+        document.getElementById('scrubber').addEventListener('input', (e) => {
+            pause();
+            displayFrame(parseInt(e.target.value));
+        });
+        
+        document.getElementById('exportShBtn').addEventListener('click', async () => {
+            if (!currentJobId) return;
+            window.location.href = `/api/jobs/${currentJobId}/export/sh`;
+        });
+        
+        document.getElementById('exportMp4Btn').addEventListener('click', async () => {
+            if (!currentJobId) return;
+            window.location.href = `/api/jobs/${currentJobId}/export/mp4`;
+        });
+        
+        document.getElementById('copyFrameBtn').addEventListener('click', () => {
+            const frameText = document.getElementById('previewContent').textContent;
+            navigator.clipboard.writeText(frameText).then(() => {
+                alert('Frame copied to clipboard!');
+            });
+        });
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

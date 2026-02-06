@@ -148,7 +148,9 @@ def image_to_ascii(
         # Custom charset provided as string
         chars = charset
     
-    if invert:
+    # For grayscale mode, invert by reversing the charset
+    # For color mode, we invert the RGB values instead (handled below)
+    if invert and not color:
         chars = chars[::-1]
     
     # Calculate aspect ratio correction
@@ -171,6 +173,9 @@ def image_to_ascii(
         for x in range(img.width):
             if color:
                 r, g, b = pixels[x, y][:3]
+                # Invert colors if invert mode is enabled
+                if invert:
+                    r, g, b = 255 - r, 255 - g, 255 - b
                 # Map to character based on brightness
                 brightness = (r + g + b) / 3.0
                 char_idx = int((brightness / 255.0) * (len(chars) - 1))

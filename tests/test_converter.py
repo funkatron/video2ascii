@@ -114,6 +114,28 @@ class TestImageToAscii:
         # Inverted should have different character distribution
         assert normal != inverted
     
+    def test_invert_with_color_inverts_rgb(self, sample_image):
+        """Test invert flag also inverts RGB colors when color mode is enabled."""
+        normal = image_to_ascii(sample_image, width=10, color=True, invert=False, aspect_ratio=1.2, charset="classic")
+        inverted = image_to_ascii(sample_image, width=10, color=True, invert=True, aspect_ratio=1.2, charset="classic")
+        # Both should have ANSI color codes
+        assert "38;2;" in normal
+        assert "38;2;" in inverted
+        # The color values should be different (inverted)
+        assert normal != inverted
+        # Extract a color from each - they should be complements
+        import re
+        normal_colors = re.findall(r'38;2;(\d+);(\d+);(\d+)', normal)
+        inverted_colors = re.findall(r'38;2;(\d+);(\d+);(\d+)', inverted)
+        # At least one color pair should sum to 255 (inverted)
+        if normal_colors and inverted_colors:
+            nr, ng, nb = int(normal_colors[0][0]), int(normal_colors[0][1]), int(normal_colors[0][2])
+            ir, ig, ib = int(inverted_colors[0][0]), int(inverted_colors[0][1]), int(inverted_colors[0][2])
+            # Inverted colors should be 255 - original
+            assert ir == 255 - nr
+            assert ig == 255 - ng
+            assert ib == 255 - nb
+    
     def test_aspect_ratio_affects_height(self, sample_image):
         """Test aspect ratio affects output height."""
         low_ar = image_to_ascii(sample_image, width=10, color=False, invert=False, aspect_ratio=1.0, charset="classic")
