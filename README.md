@@ -35,7 +35,7 @@ The tool extracts frames from the video, converts each to ASCII art using Pillow
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/video2ascii.git
+git clone https://github.com/funkatron/video2ascii.git
 cd video2ascii
 
 # Install uv if you don't have it
@@ -52,7 +52,7 @@ uv pip install -e ".[dev]"
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/video2ascii.git
+git clone https://github.com/funkatron/video2ascii.git
 cd video2ascii
 
 # Install with pip
@@ -66,7 +66,7 @@ pipx install .
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/video2ascii.git
+git clone https://github.com/funkatron/video2ascii.git
 cd video2ascii
 
 # Run directly with uv
@@ -100,17 +100,17 @@ video2ascii input.mp4 --edge --invert --color
 # Combine CRT with loop and progress
 video2ascii input.mp4 --crt --loop --progress
 
-# Commodore 64 PETSCII style
+# Commodore 64 [PETSCII](https://en.wikipedia.org/wiki/PETSCII) style
 video2ascii input.mp4 --charset petscii --crt
 
 # Export as standalone playable file (no dependencies!)
 video2ascii input.mp4 --export movie.sh
 ./movie.sh --loop --crt
 
-# Export as MP4 video file (H.265/HEVC encoding)
+# Export as MP4 video file (H.265/HEVC encoding) with [PETSCII](https://en.wikipedia.org/wiki/PETSCII)
 video2ascii input.mp4 --charset petscii --crt --export-mp4 ascii-video.mp4
 
-# Export as ProRes 422 HQ (larger file size)
+# Export as ProRes 422 HQ (larger file size, suitable for video editing)
 video2ascii input.mp4 --color --charset braille --export-prores422 ascii-prores.mov
 ```
 
@@ -121,13 +121,13 @@ video2ascii input.mp4 --color --charset braille --export-prores422 ascii-prores.
 | `--width N` | ASCII output width in characters | 160 |
 | `--fps N` | Frames per second to extract/play | 12 |
 | `--color` | Enable ANSI color output | off |
-| `--crt` | Retro CRT mode: 80 columns, green phosphor color | off |
+| `--crt` | Retro CRT mode: 80 columns, green tint color | off |
 | `--loop` | Loop playback forever | off |
 | `--speed N` | Playback speed multiplier (0.5, 1.0, 2.0, etc.) | 1.0 |
 | `--invert` | Invert brightness (dark mode friendly) | off |
 | `--edge` | Edge detection for sketch-like effect | off |
 | `--edge-threshold N` | Edge detection threshold (0.0-1.0) | 0.15 |
-| `--charset NAME` | Character set: classic, blocks, braille, dense, simple, petscii | classic |
+| `--charset NAME` | Character set: classic, blocks, braille, dense, simple, [petscii](https://en.wikipedia.org/wiki/PETSCII) | classic |
 | `--aspect-ratio N` | Terminal character aspect ratio correction | 1.2 |
 | `--progress` | Show progress bar during playback | off |
 | `--export FILE` | Package as standalone playable script | - |
@@ -161,7 +161,7 @@ Character sets available:
 - **`braille`**: Braille characters (Unicode U+2800-U+28FF)
 - **`dense`**: Many characters for fine gradients and detail
 - **`simple`**: Minimal character set (`" .oO0"`)
-- **`petscii`**: True Commodore 64 PETSCII graphics characters using Unicode 13.0+ Symbols for Legacy Computing block
+- **`petscii`**: True Commodore 64 [PETSCII](https://en.wikipedia.org/wiki/PETSCII) graphics characters using Unicode 13.0+ Symbols for Legacy Computing block
   - For Commodore 64 appearance, use [KreativeKorp Pet Me 64 fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal. These fonts render the PETSCII Unicode characters.
 
 You can also provide a custom character string ordered from darkest to lightest.
@@ -198,7 +198,7 @@ Renders ASCII frames as images and creates an MP4 video file:
 - Preserves color information (if `--color` was used)
 - Applies CRT green tint (if `--crt` was used)
 - Creates MP4 file playable in any video player
-- When using `--charset petscii`, automatically prefers PetME64 font for Commodore 64 rendering
+- When using `--charset petscii`, automatically prefers PetME64 font for Commodore 64 rendering (see [PETSCII](https://en.wikipedia.org/wiki/PETSCII))
 
 **Codec Options:**
 
@@ -223,7 +223,7 @@ video2ascii video.mp4 --color --charset braille --export-prores422 output-prores
 # With color
 video2ascii video.mp4 --color --export-mp4 colorful-ascii.mp4
 
-# PETSCII with PetME64 font (if installed)
+# [PETSCII](https://en.wikipedia.org/wiki/PETSCII) with PetME64 font (if installed)
 video2ascii video.mp4 --charset petscii --export-mp4 petscii-video.mp4
 ```
 
@@ -242,7 +242,7 @@ Use cases:
 ## Tips
 
 - **CRT Mode**: Works best in a terminal with a dark background. Retro fonts like "VT323" or "IBM Plex Mono" can enhance the appearance.
-- **PETSCII Mode**: Install and use the [KreativeKorp Pet Me 64 fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal. These fonts render the PETSCII Unicode characters (Unicode 13.0+ Symbols for Legacy Computing block).
+- **PETSCII Mode**: Install and use the [KreativeKorp Pet Me 64 fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal. These fonts render the [PETSCII](https://en.wikipedia.org/wiki/PETSCII) Unicode characters (Unicode 13.0+ Symbols for Legacy Computing block).
 - **Width**: For CRT mode, 80 is classic. For modern displays, try 120-200 depending on your terminal size.
 - **FPS**: Higher FPS = smoother playback but more processing. 10-15 FPS works well for most content.
 - **Speed**: Use `--speed 0.5` for slow-mo, `--speed 2` for double-speed.
