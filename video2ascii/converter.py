@@ -171,6 +171,9 @@ def image_to_ascii(
         for x in range(img.width):
             if color:
                 r, g, b = pixels[x, y][:3]
+                # Invert colors if invert mode is enabled
+                if invert:
+                    r, g, b = 255 - r, 255 - g, 255 - b
                 # Map to character based on brightness
                 brightness = (r + g + b) / 3.0
                 char_idx = int((brightness / 255.0) * (len(chars) - 1))
