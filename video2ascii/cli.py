@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 from video2ascii import __version__
-from video2ascii.converter import check_ffmpeg, extract_frames, convert_all
+from video2ascii.converter import check_ffmpeg, extract_frames, convert_all, CHARSETS
 from video2ascii.exporter import export
 from video2ascii.player import play
 
@@ -86,6 +86,22 @@ Examples:
     )
     
     parser.add_argument(
+        "--edge-threshold",
+        type=float,
+        default=0.15,
+        metavar="N",
+        help="Edge detection threshold (0.0-1.0, default: 0.15, higher=fewer edges)",
+    )
+    
+    parser.add_argument(
+        "--charset",
+        type=str,
+        default="classic",
+        metavar="NAME",
+        help=f"Character set: {', '.join(CHARSETS.keys())}, or custom string (default: classic). PETSCII gives Commodore 64 retro look.",
+    )
+    
+    parser.add_argument(
         "--progress",
         action="store_true",
         help="Show progress bar during playback",
@@ -102,6 +118,13 @@ Examples:
         "--no-cache",
         action="store_true",
         help="Delete temp files after playback",
+    )
+    
+    parser.add_argument(
+        "--aspect-ratio",
+        type=float,
+        default=1.2,
+        help="Terminal character aspect ratio correction (default: 1.2, lower=shorter output)",
     )
     
     parser.add_argument(
@@ -166,6 +189,9 @@ def main():
             color=args.color,
             invert=args.invert,
             edge=args.edge,
+            aspect_ratio=args.aspect_ratio,
+            edge_threshold=args.edge_threshold,
+            charset=args.charset,
         )
         
         # Export mode

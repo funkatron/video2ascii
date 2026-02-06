@@ -83,6 +83,9 @@ video2ascii input.mp4 --edge --invert --color
 # Combine for ultimate retro experience
 video2ascii input.mp4 --crt --loop --progress
 
+# Commodore 64 PETSCII style
+video2ascii input.mp4 --charset petscii --crt
+
 # Export as standalone playable file (no dependencies!)
 video2ascii input.mp4 --export movie.sh
 ./movie.sh --loop --crt
@@ -100,6 +103,9 @@ video2ascii input.mp4 --export movie.sh
 | `--speed N` | Playback speed multiplier (0.5, 1.0, 2.0, etc.) | 1.0 |
 | `--invert` | Invert brightness (dark mode friendly) | off |
 | `--edge` | Edge detection for artistic effect | off |
+| `--edge-threshold N` | Edge detection threshold (0.0-1.0) | 0.15 |
+| `--charset NAME` | Character set: classic, blocks, braille, dense, simple, petscii | classic |
+| `--aspect-ratio N` | Terminal character aspect ratio correction | 1.2 |
 | `--progress` | Show progress bar during playback | off |
 | `--export FILE` | Package as standalone playable script | - |
 | `--no-cache` | Delete temp files after playback | keep |
@@ -119,7 +125,20 @@ Perfect for that 1980s computer terminal vibe.
 
 ### Edge Detection (`--edge`)
 
-Uses Pillow's edge detection filter to extract outlines from the video. Creates an artistic, sketch-like effect. Combine with `--invert` for best results.
+Uses improved Sobel-based edge detection with Gaussian blur and thresholding to extract clean outlines from the video. Creates an artistic, sketch-like effect. Combine with `--invert` for best results. Use `--edge-threshold` to control sensitivity (lower = more edges).
+
+### Character Sets (`--charset`)
+
+Choose from different character sets for different visual styles:
+
+- **`classic`** (default): Balanced traditional ASCII art (`" .:-=+*#%@"`)
+- **`blocks`**: Bold Unicode block characters (`" ░▒▓█"`)
+- **`braille`**: High-resolution braille characters for maximum detail
+- **`dense`**: Many characters for fine gradients and detail
+- **`simple`**: Minimal clean look (`" .oO0"`)
+- **`petscii`**: Commodore 64 PETSCII-style retro 8-bit blocks (`" ░▒▓█▄▀▌▐■□▪▫▬"`)
+
+You can also provide a custom character string ordered from darkest to lightest.
 
 ### Export Mode (`--export FILE`)
 

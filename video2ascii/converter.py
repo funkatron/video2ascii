@@ -6,7 +6,7 @@ from pathlib import Path
 from multiprocessing import Pool
 from typing import Optional
 
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageEnhance
 
 
 def check_ffmpeg() -> None:
@@ -72,8 +72,19 @@ def extract_frames(
     return frame_files
 
 
+# Predefined character sets
+CHARSETS = {
+    "classic": " .:-=+*#%@",  # Default - balanced
+    "blocks": " ░▒▓█",  # Unicode block characters - bold, chunky
+    "braille": " ⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏⠐⠑⠒⠓⠔⠕⠖⠗⠘⠙⠚⠛⠜⠝⠞⠟⠠⠡⠢⠣⠤⠥⠦⠧⠨⠩⠪⠫⠬⠭⠮⠯⠰⠱⠲⠳⠴⠵⠶⠷⠸⠹⠺⠻⠼⠽⠾⠿",  # Braille - high resolution
+    "dense": " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",  # Many characters - detailed
+    "simple": " .oO0",  # Minimal - clean
+    "petscii": " ░▒▓█▄▀▌▐■□▪▫▬",  # Commodore 64 PETSCII style - retro 8-bit blocks and patterns
+}
+
+
 def image_to_ascii(
-    img: Image.Image, width: int, color: bool = False, invert: bool = False
+    img: Image.Image, width: int, color: bool = False, invert: bool = False, aspect_ratio: float = 1.2, charset: str = "classic"
 ) -> str:
     """
     Convert PIL Image to ASCII art.
@@ -87,14 +98,19 @@ def image_to_ascii(
     Returns:
         ASCII art string
     """
-    # Character density ramp (dark to light)
-    chars = " .:-=+*#%@"
+    # Get character set
+    if charset in CHARSETS:
+        chars = CHARSETS[charset]
+    else:
+        # Custom charset provided as string
+        chars = charset
+    
     if invert:
         chars = chars[::-1]
     
     # Calculate aspect ratio correction
-    # Terminal characters are roughly 2:1 height:width
-    aspect_ratio = 2.0
+    # Terminal characters are typically taller than wide (varies by font/terminal)
+    # Lower values (1.0-1.3) produce shorter output, higher values (1.5-2.0) preserve more height
     height = int(img.height * aspect_ratio * width / img.width)
     
     # Resize image
@@ -128,33 +144,98 @@ def image_to_ascii(
     return "\n".join(lines)
 
 
+def detect_edges(img: Image.Image, color: bool = False, threshold: float = 0.15) -> Image.Image:
+    """
+    Improved edge detection using multiple techniques for cleaner edges.
+    
+    Args:
+        img: Input PIL Image
+        color: If True, preserve color information from original
+        threshold: Edge strength threshold (0.0-1.0), higher = fewer edges
+        
+    Returns:
+        Edge-detected image
+    """
+    # Convert to grayscale for edge detection
+    gray = img.convert("L")
+    
+    # Apply Gaussian blur to reduce noise
+    blurred = gray.filter(ImageFilter.GaussianBlur(radius=1.0))
+    
+    # Use FIND_EDGES filter (Sobel-based)
+    edges = blurred.filter(ImageFilter.FIND_EDGES)
+    
+    # Enhance contrast to make edges more prominent
+    enhancer = ImageEnhance.Contrast(edges)
+    edges = enhancer.enhance(2.0)  # Increase contrast
+    
+    # Apply threshold to keep only strong edges
+    threshold_value = int(threshold * 255)
+    edges_array = edges.load()
+    width, height = edges.size
+    
+    for y in range(height):
+        for x in range(width):
+            pixel = edges_array[x, y]
+            if pixel < threshold_value:
+                edges_array[x, y] = 0
+            else:
+                # Enhance bright edges
+                edges_array[x, y] = min(255, int(pixel * 1.3))
+    
+    # If color mode, blend edges with original image colors
+    if color:
+        rgb_original = img.convert("RGB")
+        rgb_edges = edges.convert("RGB")
+        
+        # Blend: use edge brightness to modulate original colors
+        original_pixels = rgb_original.load()
+        edge_pixels = rgb_edges.load()
+        result = Image.new("RGB", img.size)
+        result_pixels = result.load()
+        
+        for y in range(height):
+            for x in range(width):
+                # Get edge strength (brightness of edge pixel)
+                edge_r, edge_g, edge_b = edge_pixels[x, y]
+                edge_strength = (edge_r + edge_g + edge_b) / 3.0 / 255.0
+                
+                # Get original color
+                orig_r, orig_g, orig_b = original_pixels[x, y]
+                
+                # Blend: stronger edges get more color, weak edges are dark
+                result_pixels[x, y] = (
+                    int(orig_r * edge_strength),
+                    int(orig_g * edge_strength),
+                    int(orig_b * edge_strength),
+                )
+        
+        return result
+    else:
+        return edges
+
+
 def convert_frame(args: tuple) -> tuple[int, str]:
     """
     Convert a single frame to ASCII (for parallel processing).
     
     Args:
-        args: Tuple of (frame_path, width, color, invert, edge)
+        args: Tuple of (frame_path, width, color, invert, edge, aspect_ratio, edge_threshold, charset)
         
     Returns:
         Tuple of (frame_number, ascii_string)
     """
-    frame_path, width, color, invert, edge = args
+    frame_path, width, color, invert, edge, aspect_ratio, edge_threshold, charset = args
     
     # Load image
     img = Image.open(frame_path)
     
-    # Apply edge detection if requested (in Python, not ffmpeg)
+    # Apply improved edge detection if requested
     if edge:
-        # Convert to grayscale, apply edge filter, then back to RGB for color mode
-        img_gray = img.convert("L")
-        img_edges = img_gray.filter(ImageFilter.FIND_EDGES)
-        if color:
-            img = img_edges.convert("RGB")
-        else:
-            img = img_edges
+        img = detect_edges(img, color=color, threshold=edge_threshold)
     
     # Convert to ASCII
-    ascii_art = image_to_ascii(img, width, color, invert)
+    ascii_art = image_to_ascii(img, width, color, invert, aspect_ratio, charset)
     
     # Extract frame number from filename
     frame_num = int(frame_path.stem.split("_")[1])
@@ -168,6 +249,9 @@ def convert_all(
     color: bool = False,
     invert: bool = False,
     edge: bool = False,
+    aspect_ratio: float = 1.2,
+    edge_threshold: float = 0.15,
+    charset: str = "classic",
 ) -> list[str]:
     """
     Convert all frames to ASCII in parallel.
@@ -184,7 +268,7 @@ def convert_all(
     """
     # Prepare arguments for parallel processing
     args_list = [
-        (path, width, color, invert, edge)
+        (path, width, color, invert, edge, aspect_ratio, edge_threshold, charset)
         for path in frame_paths
     ]
     
