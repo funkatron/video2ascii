@@ -6,7 +6,6 @@ Convert any video to ASCII art and play it in your terminal.
 
 
 ![Demo](examples/demo.gif)
-
 ## Demo
 
 ```bash
