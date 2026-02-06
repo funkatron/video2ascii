@@ -133,6 +133,9 @@ async def convert_video(
     Returns:
         Job ID
     """
+    # Debug logging
+    logger.info(f"Convert request: color={color}, invert={invert}, crt={crt}, edge={edge}")
+    
     # Validate inputs
     if width < 20 or width > 320:
         raise HTTPException(status_code=400, detail="width must be between 20 and 320")
