@@ -89,6 +89,9 @@ video2ascii input.mp4 --charset petscii --crt
 # Export as standalone playable file (no dependencies!)
 video2ascii input.mp4 --export movie.sh
 ./movie.sh --loop --crt
+
+# Export as MP4 video file
+video2ascii input.mp4 --charset petscii --crt --export-mp4 ascii-video.mp4
 ```
 
 ### Options
@@ -105,9 +108,10 @@ video2ascii input.mp4 --export movie.sh
 | `--edge` | Edge detection for artistic effect | off |
 | `--edge-threshold N` | Edge detection threshold (0.0-1.0) | 0.15 |
 | `--charset NAME` | Character set: classic, blocks, braille, dense, simple, petscii | classic |
-| `-- N` | Terminal character aspect ratio correction | 1.2 |
+| `--aspect-ratio N` | Terminal character aspect ratio correction | 1.2 |
 | `--progress` | Show progress bar during playback | off |
 | `--export FILE` | Package as standalone playable script | - |
+| `--export-mp4 FILE` | Export ASCII frames as MP4 video file | - |
 | `--no-cache` | Delete temp files after playback | keep |
 | `-h, --help` | Show help message | - |
 
@@ -141,7 +145,9 @@ Choose from different character sets for different visual styles:
 
 You can also provide a custom character string ordered from darkest to lightest.
 
-### Export Mode (`--export FILE`)
+### Export Modes
+
+#### Standalone Script (`--export FILE`)
 
 Packages all ASCII frames into a **single, self-playing bash script**. The exported file:
 - Has **zero dependencies** (just bash)
@@ -163,6 +169,38 @@ Great for:
 - Terminal screensavers
 - Embedding in dotfiles or scripts
 - Fun email attachments
+
+#### MP4 Video (`--export-mp4 FILE`)
+
+Renders ASCII frames as images and creates an MP4 video file:
+- Renders ASCII art using system monospace fonts (automatically finds PetME64, Iosevka, Menlo, Courier, or DejaVu)
+- Preserves color information (if `--color` was used)
+- Applies CRT green tint (if `--crt` was used)
+- Creates high-quality MP4 file (H.264, CRF 18) playable in any video player
+- When using `--charset petscii`, automatically prefers PetME64 font for authentic Commodore 64 rendering
+
+**Font Support:**
+The MP4 exporter automatically searches for fonts in common locations:
+- **PetME64** (KreativeKorp): `~/Library/Fonts/`, `/Library/Fonts/` (macOS) or `~/.fonts/`, `/usr/share/fonts/` (Linux)
+- **Iosevka**: Same locations as PetME64
+- **System fonts**: Menlo, Courier, DejaVu Sans Mono, Liberation Mono
+
+```bash
+# Export as MP4
+video2ascii video.mp4 --charset petscii --crt --export-mp4 output.mp4
+
+# With color
+video2ascii video.mp4 --color --export-mp4 colorful-ascii.mp4
+
+# PETSCII with PetME64 font (if installed)
+video2ascii video.mp4 --charset petscii --export-mp4 petscii-video.mp4
+```
+
+Great for:
+- Sharing on social media
+- Embedding in websites
+- Creating demos or presentations
+- Archiving ASCII art animations
 
 ## How It Works
 

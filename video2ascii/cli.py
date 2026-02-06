@@ -8,6 +8,7 @@ from pathlib import Path
 from video2ascii import __version__
 from video2ascii.converter import check_ffmpeg, extract_frames, convert_all, CHARSETS
 from video2ascii.exporter import export
+from video2ascii.mp4_exporter import export_mp4
 from video2ascii.player import play
 
 
@@ -115,6 +116,13 @@ Examples:
     )
     
     parser.add_argument(
+        "--export-mp4",
+        type=Path,
+        metavar="FILE",
+        help="Export ASCII frames as MP4 video file",
+    )
+    
+    parser.add_argument(
         "--no-cache",
         action="store_true",
         help="Delete temp files after playback",
@@ -194,10 +202,22 @@ def main():
             charset=args.charset,
         )
         
-        # Export mode
+        # Export modes
         if args.export:
             print(f"Packaging {len(frames)} frames into: {args.export}")
             export(frames, args.export, args.fps, args.crt)
+            return
+        
+        if args.export_mp4:
+            export_mp4(
+                frames,
+                args.export_mp4,
+                args.fps,
+                color=args.color,
+                crt=args.crt,
+                work_dir=work_dir,
+                charset=args.charset,
+            )
             return
         
         # Playback mode
