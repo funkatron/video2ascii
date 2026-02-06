@@ -50,5 +50,7 @@ htmlcov/
 coverage.xml
 *.cover
 
-# Test/development artifacts
+# Test/development artifacts (but allow examples/)
 *.mp4
+!examples/*.mp4
+!examples/*.mp4
