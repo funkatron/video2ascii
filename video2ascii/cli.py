@@ -206,6 +206,9 @@ def main():
             print("(Looping enabled)")
         if args.crt:
             print("(CRT mode: 80 columns, green phosphor)")
+        if args.charset.lower() == "petscii":
+            print("(PETSCII mode: For best results, use KreativeKorp Pet Me 64 fonts)")
+            print("  Install: https://www.kreativekorp.com/software/fonts/c64/")
         
         play(
             frames,

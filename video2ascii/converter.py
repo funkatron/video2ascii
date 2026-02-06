@@ -79,7 +79,41 @@ CHARSETS = {
     "braille": " ⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏⠐⠑⠒⠓⠔⠕⠖⠗⠘⠙⠚⠛⠜⠝⠞⠟⠠⠡⠢⠣⠤⠥⠦⠧⠨⠩⠪⠫⠬⠭⠮⠯⠰⠱⠲⠳⠴⠵⠶⠷⠸⠹⠺⠻⠼⠽⠾⠿",  # Braille - high resolution
     "dense": " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",  # Many characters - detailed
     "simple": " .oO0",  # Minimal - clean
-    "petscii": " ░▒▓█▄▀▌▐■□▪▫▬",  # Commodore 64 PETSCII style - retro 8-bit blocks and patterns
+    # True PETSCII graphics characters (from PETSCII $A0-$DF, screen codes $60-$7F)
+    # Using Unicode mappings from KreativeKorp PETSCII standard
+    # Using widely-supported Unicode block characters (avoiding Unicode 13.0+ if needed)
+    # Ordered by brightness/density for ASCII art conversion
+    "petscii": (
+        " "  # Space (lightest)
+        "\u2591"  # LIGHT SHADE
+        "\u2581"  # LOWER ONE EIGHTH BLOCK
+        "\u258F"  # LEFT ONE EIGHTH BLOCK  
+        "\u2594"  # UPPER ONE EIGHTH BLOCK
+        "\u258E"  # LEFT ONE QUARTER BLOCK
+        "\u2582"  # LOWER ONE QUARTER BLOCK
+        "\u2595"  # RIGHT ONE EIGHTH BLOCK
+        "\u258D"  # LEFT THREE EIGHTHS BLOCK
+        "\u2583"  # LOWER THREE EIGHTHS BLOCK
+        "\u258C"  # LEFT HALF BLOCK
+        "\u2584"  # LOWER HALF BLOCK
+        "\u2592"  # MEDIUM SHADE
+        "\u2593"  # DARK SHADE
+        "\u2597"  # QUADRANT LOWER RIGHT
+        "\u2596"  # QUADRANT LOWER LEFT
+        "\u2598"  # QUADRANT UPPER LEFT
+        "\u259D"  # QUADRANT UPPER RIGHT
+        "\u259A"  # QUADRANT UPPER LEFT AND LOWER RIGHT
+        "\u2599"  # QUADRANT UPPER LEFT AND LOWER LEFT AND LOWER RIGHT
+        "\u259B"  # QUADRANT UPPER LEFT AND UPPER RIGHT AND LOWER LEFT
+        "\u259C"  # QUADRANT UPPER LEFT AND UPPER RIGHT AND LOWER RIGHT
+        "\u2589"  # LEFT SEVEN EIGHTHS BLOCK
+        "\u258A"  # LEFT THREE QUARTERS BLOCK
+        "\u258B"  # LEFT FIVE EIGHTHS BLOCK
+        "\u2586"  # LOWER SEVEN EIGHTHS BLOCK
+        "\u2587"  # LOWER FIVE EIGHTHS BLOCK
+        "\u2585"  # LOWER THREE QUARTERS BLOCK
+        "\u2588"  # FULL BLOCK (darkest)
+    ),
 }
 
 

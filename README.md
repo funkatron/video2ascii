@@ -136,7 +136,8 @@ Choose from different character sets for different visual styles:
 - **`braille`**: High-resolution braille characters for maximum detail
 - **`dense`**: Many characters for fine gradients and detail
 - **`simple`**: Minimal clean look (`" .oO0"`)
-- **`petscii`**: Commodore 64 PETSCII-style retro 8-bit blocks (`" ░▒▓█▄▀▌▐■□▪▫▬"`)
+- **`petscii`**: True Commodore 64 PETSCII graphics characters using Unicode 13.0+ Symbols for Legacy Computing block
+  - **Tip**: For authentic Commodore 64 look, use [KreativeKorp Pet Me 64 fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal. These fonts properly render the PETSCII Unicode characters.
 
 You can also provide a custom character string ordered from darkest to lightest.
 
@@ -172,6 +173,7 @@ Great for:
 ## Tips
 
 - **CRT Mode**: Works best in a terminal with a dark background. Try a retro font like "VT323" or "IBM Plex Mono" for extra authenticity.
+- **PETSCII Mode**: For the most authentic Commodore 64 experience, install and use the [KreativeKorp Pet Me 64 fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal. These fonts properly render the official PETSCII Unicode characters (Unicode 13.0+ Symbols for Legacy Computing block).
 - **Width**: For CRT mode, 80 is classic. For modern displays, try 120-200 depending on your terminal size.
 - **FPS**: Higher FPS = smoother playback but more processing. 10-15 FPS works well for most content.
 - **Speed**: Use `--speed 0.5` for slow-mo, `--speed 2` for double-speed.
