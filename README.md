@@ -26,11 +26,29 @@ The tool extracts frames from the video, converts each to ASCII art using Pillow
 
 **Python dependencies:**
 - Python 3.10+
-- Pillow (installed automatically via pip)
+- Pillow (installed automatically)
+- **[uv](https://github.com/astral-sh/uv)** (recommended) or pip/pipx
 
 ## Installation
 
-### Option 1: Install from source
+### Option 1: Install with uv (recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/YOUR_USERNAME/video2ascii.git
+cd video2ascii
+
+# Install uv if you don't have it
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install the package
+uv pip install .
+
+# Or install in editable mode with dev dependencies
+uv pip install -e ".[dev]"
+```
+
+### Option 2: Install with pip/pipx
 
 ```bash
 # Clone the repository
@@ -44,19 +62,18 @@ pip install .
 pipx install .
 ```
 
-### Option 2: Run directly (no install)
+### Option 3: Run directly (no install)
 
 ```bash
 # Clone the repository
 git clone https://github.com/YOUR_USERNAME/video2ascii.git
 cd video2ascii
 
-# Run directly
-python3 -m video2ascii input.mp4
+# Run directly with uv
+uv run python -m video2ascii input.mp4
 
-# Or make it executable
-chmod +x video2ascii/cli.py
-./video2ascii/cli.py input.mp4
+# Or run directly with Python
+python3 -m video2ascii input.mp4
 ```
 
 ## Usage
@@ -231,6 +248,26 @@ Use cases:
 - **Speed**: Use `--speed 0.5` for slow-mo, `--speed 2` for double-speed.
 - **Edge + Color**: Combining edge detection with color preserves color information along detected edges.
 - **Aspect Ratio**: Terminal characters are roughly 2:1 height:width, so the tool automatically adjusts frame height for proper proportions.
+
+## Development
+
+This project uses `uv` for package management and development workflows.
+
+```bash
+# Install in editable mode with dev dependencies
+uv pip install -e ".[dev]"
+
+# Run tests
+uv run pytest
+
+# Run tests with coverage
+uv run pytest --cov=video2ascii
+
+# Run the tool directly
+uv run python -m video2ascii input.mp4
+```
+
+The project also works with standard pip/pipx workflows if you prefer.
 
 ## Performance
 
