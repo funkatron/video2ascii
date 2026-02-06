@@ -20,6 +20,27 @@ video2ascii your-video.mp4 --edge --invert
 
 The tool extracts frames from the video, converts each to ASCII art using Pillow, and plays them back in sequence in your terminal.
 
+## Web GUI
+
+A browser-based interface is also available for easy video conversion without using the command line.
+
+![Web GUI](docs/web-gui-screenshot.png)
+
+```bash
+# Install web dependencies
+uv pip install -e ".[web]"
+
+# Launch the web GUI
+video2ascii --web
+```
+
+Features:
+- Drag-and-drop video upload
+- Real-time conversion progress
+- Presets (Classic, CRT, Sketch, Minimal)
+- Live playback with scrubbing
+- Export to .sh or .mp4
+
 ## Requirements
 
 **System dependencies:**
