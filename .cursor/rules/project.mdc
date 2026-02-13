@@ -1,0 +1,103 @@
+---
+description: video2ascii project architecture, conventions, and key context for AI agents
+globs:
+alwaysApply: true
+---
+
+# video2ascii Project Guide
+
+## Overview
+
+video2ascii converts video files to ASCII art. It supports terminal playback, web GUI, and exports to standalone shell scripts, MP4, and ProRes video files.
+
+**Version:** 2.0.0
+**Python:** >=3.10
+**Key system dependency:** ffmpeg (required for frame extraction and video encoding)
+
+## Architecture
+
+### Core Modules (`video2ascii/`)
+
+| Module | Purpose |
+|--------|---------|
+| `cli.py` | CLI entry point. Handles arg parsing, `--web` flag launches FastAPI server. |
+| `converter.py` | **Core logic.** Frame extraction via ffmpeg, ASCII conversion via Pillow, edge detection. `convert_all()` parallelizes across CPU cores with `multiprocessing.Pool`. |
+| `player.py` | Terminal playback engine using ANSI escape sequences. Handles loop, speed, CRT green tint. |
+| `exporter.py` | Exports frames as standalone bash script (gzip+base64 compressed). |
+| `mp4_exporter.py` | Renders ASCII frames to images and encodes MP4/ProRes via ffmpeg. Handles font selection, color rendering, CRT tint. |
+
+### Web GUI (`video2ascii/web/`)
+
+| Module | Purpose |
+|--------|---------|
+| `app.py` | FastAPI backend. Endpoints: upload (`/api/convert`), job status, SSE progress stream (`/api/jobs/{id}/stream`), frame retrieval, export (.sh, .mp4), job deletion. Jobs stored in-memory dict. Processing runs in thread pool via `asyncio.run_in_executor`. |
+| `renderer.py` | Converts ANSI color escape sequences to HTML `<span>` elements with inline `color` styles. Handles CRT green tint mode. |
+| `server.py` | Standalone entry point for web server. Opens browser automatically. |
+| `static/index.html` | Single-page frontend. Vanilla HTML/CSS/JS (no framework). Braun/midcentury-inspired design with sidebar layout. Uses XHR for upload progress, EventSource (SSE) for conversion progress. |
+
+### Entry Points
+
+- `video2ascii` -> `video2ascii.cli:main` (CLI)
+- `video2ascii-web` -> `video2ascii.web.server:main` (standalone web server)
+- `video2ascii --web` launches web GUI from CLI entry point
+
+## Key Conventions
+
+### Code Style
+- Explicit over implicit. Clarity over brevity.
+- Type hints on function signatures.
+- Logging via `logging` module (`logger = logging.getLogger(__name__)`).
+- f-strings for string formatting.
+
+### Dependency Groups (`pyproject.toml`)
+- **core**: `Pillow>=10.0.0` (always installed)
+- **dev**: `pytest`, `pytest-cov`, `pytest-mock`, `httpx` (for testing)
+- **web**: `fastapi`, `uvicorn[standard]`, `python-multipart` (optional, for web GUI)
+
+### Testing
+- Tests in `tests/` using pytest.
+- Test files mirror source structure: `test_converter.py`, `test_cli.py`, `test_web_app.py`, etc.
+- Web app tests use `FastAPI.TestClient` (requires `httpx`).
+- Focus on behavior, not implementation details. Avoid brittle assertions (e.g., exact SQL strings).
+- Run: `uv run pytest` or `uv run pytest --cov=video2ascii`
+
+### Running Locally
+```bash
+# CLI
+uv run python -m video2ascii input.mp4
+
+# Web GUI
+uv run python -m video2ascii.cli --web
+# Opens http://localhost:8080
+```
+
+## Important Technical Details
+
+### Invert Mode
+- **Grayscale** (`color=False`): Reverses the character set (dark chars for bright pixels, vice versa).
+- **Color** (`color=True`): Inverts RGB values (255 - original). Does NOT reverse charset to avoid double-inversion.
+
+### Web GUI Progress
+- **Upload progress**: Tracked client-side via XHR `upload.onprogress`.
+- **Processing progress**: Server pushes updates via Server-Sent Events (SSE) at `/api/jobs/{id}/stream`.
+- No polling. Real-time push-based.
+
+### Frame Processing Pipeline
+1. `extract_frames()` - calls ffmpeg to extract video frames as PNGs
+2. `convert_all()` - parallelizes `convert_frame()` across CPU cores via `multiprocessing.Pool`
+3. `convert_frame()` -> `image_to_ascii()` - maps pixel brightness to characters, optionally with ANSI color codes
+4. For web: `ansi_to_html()` converts ANSI codes to HTML spans
+
+### Character Sets (defined in `converter.py` `CHARSETS` dict)
+- `classic`: `" .:-=+*#%@"` (default)
+- `blocks`: Unicode block elements
+- `braille`: Unicode braille patterns
+- `dense`: Extended ASCII for fine gradients
+- `simple`: `" .oO0"`
+- `petscii`: Commodore 64 PETSCII characters (Unicode 13.0+ Legacy Computing block)
+
+## Git Workflow
+- Feature branches off `main`
+- Squash merge PRs
+- Commit messages: imperative mood, explain "why" not "what"
+- Keep lint/doc changes separate from logic changes

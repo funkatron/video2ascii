@@ -52,3 +52,17 @@ video2ascii input.mp4 --charset petscii --crt --export examples/retro-movie.sh
 video2ascii input.mp4 --color --charset classic --export-mp4 examples/my-movie.mp4
 video2ascii input.mp4 --color --charset braille --export-mp4 examples/my-braille-movie.mp4
 ```
+
+## Web GUI
+
+You can also create and preview ASCII art using the browser-based web GUI:
+
+```bash
+# Install web dependencies
+uv pip install -e ".[web]"
+
+# Launch the web GUI
+video2ascii --web
+```
+
+The web GUI supports drag-and-drop upload, presets, live playback, and export to .sh or .mp4.

@@ -142,13 +142,14 @@ video2ascii input.mp4 --color --charset braille --export-prores422 ascii-prores.
 
 | Option | Description | Default |
 |--------|-------------|---------|
+| `--web` | Launch browser-based web GUI (see [Web GUI](#web-gui)) | off |
 | `--width N` | ASCII output width in characters | 160 |
 | `--fps N` | Frames per second to extract/play | 12 |
 | `--color` | Enable ANSI color output | off |
 | `--crt` | Retro CRT mode: 80 columns, green tint color | off |
 | `--loop` | Loop playback forever | off |
 | `--speed N` | Playback speed multiplier (0.5, 1.0, 2.0, etc.) | 1.0 |
-| `--invert` | Invert brightness (dark mode friendly) | off |
+| `--invert` | Invert brightness and colors (dark mode friendly) | off |
 | `--edge` | Edge detection for sketch-like effect | off |
 | `--edge-threshold N` | Edge detection threshold (0.0-1.0) | 0.15 |
 | `--charset NAME` | Character set: classic, blocks, braille, dense, simple, [petscii](https://en.wikipedia.org/wiki/PETSCII) | classic |
@@ -158,6 +159,7 @@ video2ascii input.mp4 --color --charset braille --export-prores422 ascii-prores.
 | `--export-mp4 FILE` | Export ASCII frames as MP4 video file (H.265/HEVC encoding) | - |
 | `--export-prores422 FILE` | Export ASCII frames as video file using ProRes 422 HQ codec | - |
 | `--no-cache` | Delete temp files after playback | keep |
+| `-v, --verbose` | Enable verbose/debug logging | off |
 | `-h, --help` | Show help message | - |
 
 ## Modes
@@ -257,11 +259,37 @@ Use cases:
 - Creating demos or presentations
 - Archiving ASCII art animations
 
+## Architecture
+
+```
+video2ascii/
+├── cli.py              # CLI entry point (argparse, --web flag)
+├── converter.py        # Core: frame extraction (ffmpeg), ASCII conversion (Pillow), edge detection
+├── player.py           # Terminal playback engine (ANSI escape sequences)
+├── exporter.py         # Standalone .sh script export (gzip+base64 compressed)
+├── mp4_exporter.py     # MP4/ProRes video export (renders ASCII to images, encodes with ffmpeg)
+├── web/
+│   ├── app.py          # FastAPI backend: upload, convert, SSE progress, export endpoints
+│   ├── renderer.py     # ANSI-to-HTML converter for web display
+│   ├── server.py       # Standalone web server entry point
+│   └── static/
+│       └── index.html  # Single-page frontend (vanilla HTML/CSS/JS)
+tests/
+├── test_cli.py         # CLI argument parsing and main function tests
+├── test_converter.py   # Frame extraction, ASCII conversion, edge detection tests
+├── test_exporter.py    # Shell script export tests
+├── test_mp4_exporter.py# MP4/ProRes export tests
+├── test_player.py      # Terminal player tests
+├── test_web_app.py     # FastAPI endpoint integration tests
+└── test_web_renderer.py# ANSI-to-HTML renderer tests
+```
+
 ## How It Works
 
 1. **Frame Extraction**: Uses `ffmpeg` to extract frames at the specified FPS and scale them to the target width
 2. **ASCII Conversion**: Uses Pillow to convert each frame to ASCII art (parallelized across CPU cores). Maps pixel brightness to character density ramp: `" .:-=+*#%@"`
 3. **Playback**: Displays frames sequentially in the terminal using ANSI escape sequences for smooth animation
+4. **Web GUI**: FastAPI serves a single-page app; uploads go through multipart form, conversion runs in a thread pool, progress streams via Server-Sent Events (SSE), frames are rendered as colored HTML spans
 
 ## Tips
 
@@ -271,6 +299,7 @@ Use cases:
 - **FPS**: Higher FPS = smoother playback but more processing. 10-15 FPS works well for most content.
 - **Speed**: Use `--speed 0.5` for slow-mo, `--speed 2` for double-speed.
 - **Edge + Color**: Combining edge detection with color preserves color information along detected edges.
+- **Invert + Color**: When both are enabled, RGB values are inverted (negative effect). In grayscale mode, only the character mapping is reversed.
 - **Aspect Ratio**: Terminal characters are roughly 2:1 height:width, so the tool automatically adjusts frame height for proper proportions.
 
 ## Development
@@ -281,15 +310,36 @@ This project uses `uv` for package management and development workflows.
 # Install in editable mode with dev dependencies
 uv pip install -e ".[dev]"
 
+# Also install web dependencies for full development
+uv pip install -e ".[web]"
+
 # Run tests
 uv run pytest
 
 # Run tests with coverage
 uv run pytest --cov=video2ascii
 
-# Run the tool directly
+# Run the tool directly (CLI)
 uv run python -m video2ascii input.mp4
+
+# Run the web GUI directly
+uv run python -m video2ascii.cli --web
 ```
+
+### Dependency Groups
+
+| Group | Install | Contents |
+|-------|---------|----------|
+| core | `uv pip install .` | Pillow |
+| dev | `uv pip install -e ".[dev]"` | pytest, pytest-cov, pytest-mock, httpx |
+| web | `uv pip install -e ".[web]"` | FastAPI, uvicorn, python-multipart |
+
+### Entry Points
+
+| Command | Module | Description |
+|---------|--------|-------------|
+| `video2ascii` | `video2ascii.cli:main` | CLI tool |
+| `video2ascii-web` | `video2ascii.web.server:main` | Standalone web server |
 
 The project also works with standard pip/pipx workflows if you prefer.
 
