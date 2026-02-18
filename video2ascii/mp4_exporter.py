@@ -10,6 +10,7 @@ from typing import Optional
 from PIL import Image, ImageDraw, ImageFont
 
 from video2ascii.fonts import ResolvedFont, get_subtitle_font_name, resolve_font
+from video2ascii.presets import ColorScheme
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ def render_ascii_frame(
     ascii_text: str,
     output_path: Path,
     color: bool = False,
-    crt: bool = False,
+    color_scheme: Optional[ColorScheme] = None,
     font_size: int = 20,
     font_path: Optional[Path] = None,
     font_is_bold: bool = False,
@@ -32,7 +33,7 @@ def render_ascii_frame(
         ascii_text: ASCII art string (may contain ANSI color codes if color=True)
         output_path: Path to save rendered image
         color: Whether to parse ANSI color codes
-        crt: Apply green phosphor tint
+        color_scheme: Optional ColorScheme for tinted rendering
         font_size: Font size in pixels
         font_path: Pre-resolved font file path (None for Pillow default)
         font_is_bold: Whether font_path is a bold variant (controls braille
@@ -152,12 +153,9 @@ def render_ascii_frame(
             except Exception:
                 pass
 
-    # Create image with black background
-    bg_color = (5, 5, 5) if crt else (0, 0, 0)
+    bg_color = color_scheme.bg if color_scheme else (0, 0, 0)
     img = Image.new("RGB", (width, height), bg_color)
     draw = ImageDraw.Draw(img)
-
-    crt_green = (51, 255, 51)
 
     y = 0
     for line in lines:
@@ -182,12 +180,8 @@ def render_ascii_frame(
                                     g = int(parts[3])
                                     b = int(parts[4].rstrip("m"))
                                     current_color = (r, g, b)
-                                    if crt:
-                                        current_color = (
-                                            min(255, int(r * 0.2 + crt_green[0] * 0.8)),
-                                            min(255, int(g * 0.2 + crt_green[1] * 0.8)),
-                                            min(255, int(b * 0.2 + crt_green[2] * 0.8)),
-                                        )
+                                    if color_scheme:
+                                        current_color = color_scheme.blend_color(r, g, b)
                             except (ValueError, IndexError):
                                 pass
                         i = end + 1
@@ -246,9 +240,8 @@ def render_ascii_frame(
 
                 i += 1
         else:
-            # No color - strip ANSI codes and draw the line
             clean_line = re.sub(r'\033\[[0-9;]*m', '', line)
-            text_color = crt_green if crt else (255, 255, 255)
+            text_color = color_scheme.tint if color_scheme else (255, 255, 255)
 
             r, g, b = text_color
             brightness = (r + g + b) / 3.0
@@ -324,7 +317,7 @@ def export_mp4(
     output_path: Path,
     fps: int,
     color: bool = False,
-    crt: bool = False,
+    color_scheme: Optional[ColorScheme] = None,
     work_dir: Path = None,
     charset: str = "classic",
     target_width: int = 1920,
@@ -339,7 +332,7 @@ def export_mp4(
         output_path: Path to output MP4 file
         fps: Frames per second
         color: Whether frames contain ANSI color codes
-        crt: Apply CRT green phosphor effect
+        color_scheme: Optional ColorScheme for tinted rendering
         work_dir: Working directory for temporary rendered images
         charset: Character set name
         target_width: Target width in pixels for rendered frames
@@ -349,9 +342,9 @@ def export_mp4(
     """
     logger.info("Exporting %d frames to MP4: %s", len(frames), output_path)
     logger.debug(
-        "MP4 export settings: fps=%d, color=%s, crt=%s, charset=%s, "
+        "MP4 export settings: fps=%d, color=%s, color_scheme=%s, charset=%s, "
         "target_width=%d, codec=%s, font_override=%s",
-        fps, color, crt, charset, target_width, codec, font_override,
+        fps, color, color_scheme, charset, target_width, codec, font_override,
     )
 
     # Resolve font once for all frames
@@ -381,7 +374,7 @@ def export_mp4(
             frame,
             frame_path,
             color=color,
-            crt=crt,
+            color_scheme=color_scheme,
             font_path=resolved.path,
             font_is_bold=resolved.is_bold,
             charset=charset,

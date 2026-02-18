@@ -17,6 +17,7 @@ from video2ascii.converter import check_ffmpeg, extract_frames, convert_all, CHA
 from video2ascii.exporter import export
 from video2ascii.fonts import list_available_fonts
 from video2ascii.mp4_exporter import export_mp4
+from video2ascii.presets import PRESETS, ColorScheme, serialize_presets
 from video2ascii.subtitle import generate_srt, parse_srt
 from video2ascii.web.renderer import frames_to_html
 
@@ -55,7 +56,7 @@ async def _process_video_async(
     edge_threshold: float,
     aspect_ratio: float,
     charset: str,
-    crt: bool,
+    crt_filter: bool,
     subtitle: bool = False,
 ) -> None:
     """
@@ -67,7 +68,6 @@ async def _process_video_async(
         jobs[job_id]["status"] = JobStatus.EXTRACTING
         jobs[job_id]["progress"] = {"stage": "extracting", "current": 0, "total": 0}
 
-        # Extract frames (run in thread pool to avoid blocking)
         loop = asyncio.get_event_loop()
         frame_paths = await loop.run_in_executor(
             None,
@@ -76,13 +76,12 @@ async def _process_video_async(
             fps,
             width,
             work_dir,
-            crt,
+            crt_filter,
         )
 
         jobs[job_id]["status"] = JobStatus.CONVERTING
         jobs[job_id]["progress"] = {"stage": "converting", "current": 0, "total": len(frame_paths)}
 
-        # Convert to ASCII (run in thread pool)
         frames = await loop.run_in_executor(
             None,
             convert_all,
@@ -96,7 +95,6 @@ async def _process_video_async(
             charset,
         )
 
-        # Generate subtitles if requested
         subtitle_segments = None
         subtitle_srt_path = None
         if subtitle:
@@ -131,13 +129,15 @@ async def index():
         return HTMLResponse(content=f.read())
 
 
+@app.get("/api/presets")
+async def get_presets():
+    """Return all preset definitions (with color schemes serialized)."""
+    return serialize_presets()
+
+
 @app.get("/api/fonts")
 async def get_fonts(charset: str = "classic"):
-    """Return font names available for a given charset.
-
-    For ``petscii`` this returns installed PetMe variant names.
-    For other charsets an empty list is returned.
-    """
+    """Return font names available for a given charset."""
     return {"fonts": list_available_fonts(charset)}
 
 
@@ -155,20 +155,23 @@ async def convert_video(
     crt: bool = Form(False),
     subtitle: bool = Form(False),
     font: str = Form(""),
+    preset: str = Form(""),
 ):
-    """
-    Upload video and start conversion job.
+    """Upload video and start conversion job."""
+    # Resolve preset: if a preset name is given, use its color_scheme and crt_filter
+    color_scheme = None
+    crt_filter = crt  # backward compat: bare crt checkbox acts as crt_filter
+    if preset and preset in PRESETS:
+        preset_def = PRESETS[preset]
+        color_scheme = preset_def.get("color_scheme")
+        crt_filter = preset_def.get("crt_filter", False)
 
-    Returns:
-        Job ID
-    """
-    # Debug logging
     logger.info(
-        "Convert request: color=%s, invert=%s, crt=%s, edge=%s, subtitle=%s, font=%s",
-        color, invert, crt, edge, subtitle, font,
+        "Convert request: color=%s, invert=%s, preset=%s, crt_filter=%s, "
+        "edge=%s, subtitle=%s, font=%s",
+        color, invert, preset, crt_filter, edge, subtitle, font,
     )
     
-    # Validate inputs
     if width < 20 or width > 320:
         raise HTTPException(status_code=400, detail="width must be between 20 and 320")
     if fps < 1 or fps > 30:
@@ -176,26 +179,21 @@ async def convert_video(
     if charset not in CHARSETS and len(charset) < 2:
         raise HTTPException(status_code=400, detail=f"charset must be one of {list(CHARSETS.keys())} or a custom string")
 
-    # Check ffmpeg
     try:
         check_ffmpeg()
     except SystemExit:
         raise HTTPException(status_code=500, detail="ffmpeg not found. Please install ffmpeg.")
 
-    # Generate job ID
     job_id = str(uuid.uuid4())
 
-    # Create work directory
     base_name = Path(file.filename).stem if file.filename else "video"
     work_dir = Path(tempfile.mkdtemp(prefix=f"ascii_{base_name}_"))
 
-    # Save uploaded video
     video_path = work_dir / "input_video"
     with open(video_path, "wb") as f:
         content = await file.read()
         f.write(content)
 
-    # Initialize job
     jobs[job_id] = {
         "status": JobStatus.PENDING,
         "work_dir": work_dir,
@@ -209,10 +207,12 @@ async def convert_video(
             "edge_threshold": edge_threshold,
             "aspect_ratio": aspect_ratio,
             "charset": charset,
-            "crt": crt,
+            "crt_filter": crt_filter,
             "subtitle": subtitle,
             "font": font or None,
+            "preset": preset or None,
         },
+        "color_scheme": color_scheme,
         "frames": None,
         "subtitle_segments": None,
         "subtitle_srt_path": None,
@@ -220,7 +220,6 @@ async def convert_video(
         "progress": {"stage": "pending", "current": 0, "total": 0},
     }
 
-    # Start background processing
     asyncio.create_task(
         _process_video_async(
             job_id,
@@ -234,7 +233,7 @@ async def convert_video(
             edge_threshold,
             aspect_ratio,
             charset,
-            crt,
+            crt_filter,
             subtitle=subtitle,
         )
     )
@@ -274,8 +273,7 @@ async def stream_job_progress(job_id: str):
             status = job["status"]
             progress = job["progress"]
 
-            # Only send if status changed
-            if status != last_status or progress.get("current", 0) % 10 == 0:  # Send every 10 frames
+            if status != last_status or progress.get("current", 0) % 10 == 0:
                 data = {
                     "status": status,
                     "progress": progress,
@@ -287,7 +285,7 @@ async def stream_job_progress(job_id: str):
             if status in (JobStatus.COMPLETED, JobStatus.ERROR):
                 break
 
-            await asyncio.sleep(0.5)  # Poll every 500ms
+            await asyncio.sleep(0.5)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
@@ -306,16 +304,13 @@ async def get_frames(job_id: str):
     if job["frames"] is None:
         raise HTTPException(status_code=500, detail="Frames not available")
 
-    # Convert to HTML
-    crt = job["params"]["crt"]
-    html_frames = frames_to_html(job["frames"], crt=crt)
+    color_scheme = job.get("color_scheme")
+    html_frames = frames_to_html(job["frames"], color_scheme=color_scheme)
 
     response = {"frames": html_frames, "fps": job["params"]["fps"]}
 
-    # Include subtitle segments if available
     subtitle_segments = job.get("subtitle_segments")
     if subtitle_segments:
-        # Convert tuples to dicts for JSON serialization
         response["subtitle_segments"] = [
             {"start": start, "end": end, "text": text}
             for start, end, text in subtitle_segments
@@ -341,9 +336,8 @@ async def get_frame(job_id: str, frame_num: int):
     if frame_num < 0 or frame_num >= len(job["frames"]):
         raise HTTPException(status_code=404, detail="Frame number out of range")
 
-    # Convert to HTML
-    crt = job["params"]["crt"]
-    html_frame = frames_to_html([job["frames"][frame_num]], crt=crt)[0]
+    color_scheme = job.get("color_scheme")
+    html_frame = frames_to_html([job["frames"][frame_num]], color_scheme=color_scheme)[0]
 
     return {"frame": html_frame}
 
@@ -362,13 +356,12 @@ async def export_sh(job_id: str):
     if job["frames"] is None:
         raise HTTPException(status_code=500, detail="Frames not available")
 
-    # Create export file
     export_path = job["work_dir"] / "export.sh"
     export(
         job["frames"],
         export_path,
         job["params"]["fps"],
-        job["params"]["crt"],
+        job["params"]["crt_filter"],
     )
 
     return FileResponse(
@@ -392,16 +385,17 @@ async def export_mp4_endpoint(job_id: str):
     if job["frames"] is None:
         raise HTTPException(status_code=500, detail="Frames not available")
 
-    # Create export file
     export_path = job["work_dir"] / "export.mp4"
     target_width = min(1920, max(1280, job["params"]["width"] * 16))
+
+    color_scheme = job.get("color_scheme")
 
     export_mp4(
         job["frames"],
         export_path,
         job["params"]["fps"],
         color=job["params"]["color"],
-        crt=job["params"]["crt"],
+        color_scheme=color_scheme,
         work_dir=job["work_dir"],
         charset=job["params"]["charset"],
         target_width=target_width,
@@ -426,11 +420,9 @@ async def delete_job(job_id: str):
     job = jobs[job_id]
     work_dir = job["work_dir"]
 
-    # Clean up files
     if work_dir.exists():
         shutil.rmtree(work_dir, ignore_errors=True)
 
-    # Remove from jobs dict
     del jobs[job_id]
 
     return {"message": "Job deleted"}
@@ -439,7 +431,6 @@ async def delete_job(job_id: str):
 @app.on_event("shutdown")
 async def shutdown():
     """Cleanup on shutdown."""
-    # Clean up all job directories
     for job in jobs.values():
         work_dir = job.get("work_dir")
         if work_dir and Path(work_dir).exists():

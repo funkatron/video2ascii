@@ -12,7 +12,10 @@ Convert any video to ASCII art and play it in your terminal.
 video2ascii your-video.mp4
 
 # Retro CRT mode - 80 columns, green phosphor color
-video2ascii your-video.mp4 --crt
+video2ascii your-video.mp4 --preset crt
+
+# Commodore 64 mode - 40 columns, PETSCII, light blue on dark blue
+video2ascii your-video.mp4 --preset c64
 
 # Edge detection (sketch-like effect)
 video2ascii your-video.mp4 --edge --invert
@@ -40,7 +43,7 @@ video2ascii --web
 Features:
 - Drag-and-drop video upload
 - Real-time conversion progress
-- Presets (Classic, CRT, Sketch, Minimal)
+- Presets (Classic, CRT, C64, Sketch, Minimal)
 - Live playback with scrubbing
 - Auto-generated subtitles
 - Font chooser for PETSCII charset
@@ -124,7 +127,12 @@ video2ascii input.mp4 --width 120 --fps 15
 # Enable color output
 video2ascii input.mp4 --color
 
-# Retro CRT mode (80 columns, green phosphor)
+# Presets: CRT, C64, Sketch, Minimal
+video2ascii input.mp4 --preset crt
+video2ascii input.mp4 --preset c64
+video2ascii input.mp4 --preset sketch
+
+# --crt is shorthand for --preset crt (backward compatible)
 video2ascii input.mp4 --crt
 
 # Loop forever at 1.5x speed with progress bar
@@ -133,11 +141,11 @@ video2ascii input.mp4 --loop --speed 1.5 --progress
 # Edge detection (sketch-like effect)
 video2ascii input.mp4 --edge --invert --color
 
-# Combine CRT with loop and progress
-video2ascii input.mp4 --crt --loop --progress
+# Combine preset with loop and progress
+video2ascii input.mp4 --preset crt --loop --progress
 
-# Commodore 64 PETSCII style
-video2ascii input.mp4 --charset petscii --crt
+# Override preset values (preset sets defaults, flags override)
+video2ascii input.mp4 --preset c64 --width 60
 
 # Auto-generate subtitles from audio
 video2ascii input.mp4 --subtitle --color
@@ -147,7 +155,7 @@ video2ascii input.mp4 --export movie.sh
 ./movie.sh --loop --crt
 
 # Export as MP4 with subtitles and a specific font
-video2ascii input.mp4 --charset petscii --crt --subtitle --font PetMe128 --export-mp4 ascii-video.mp4
+video2ascii input.mp4 --preset c64 --subtitle --font PetMe128 --export-mp4 ascii-video.mp4
 
 # Export as ProRes 422 HQ (larger file size, suitable for video editing)
 video2ascii input.mp4 --color --charset braille --export-prores422 ascii-prores.mov
@@ -158,10 +166,11 @@ video2ascii input.mp4 --color --charset braille --export-prores422 ascii-prores.
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--web` | Launch browser-based web GUI (see [Web GUI](#web-gui)) | off |
+| `--preset NAME` | Apply a preset: classic, crt, c64, sketch, minimal (see [Presets](#presets)) | - |
 | `--width N` | ASCII output width in characters | 160 |
 | `--fps N` | Frames per second to extract/play | 12 |
 | `--color` | Enable ANSI color output | off |
-| `--crt` | Retro CRT mode: 80 columns, green tint color | off |
+| `--crt` | Shorthand for `--preset crt` | off |
 | `--loop` | Loop playback forever | off |
 | `--speed N` | Playback speed multiplier (0.5, 1.0, 2.0, etc.) | 1.0 |
 | `--invert` | Invert brightness and colors (dark mode friendly) | off |
@@ -179,17 +188,35 @@ video2ascii input.mp4 --color --charset braille --export-prores422 ascii-prores.
 | `-v, --verbose` | Enable verbose/debug logging | off |
 | `-h, --help` | Show help message | - |
 
-## Modes
+## Presets
 
-### CRT Mode (`--crt`)
+Presets bundle conversion settings and an optional color scheme. Use `--preset NAME` to apply one. Explicit CLI flags (like `--width 60`) override preset defaults.
 
-Applies retro terminal settings:
-- Fixed 80-column width (like classic terminals)
-- Green phosphor color tint (#33FF33) - applies green color to all text
-- Light text on dark background
-- Enhanced contrast via unsharp filter during frame extraction
+| Preset | Width | Charset | Color Scheme | Description |
+|--------|-------|---------|--------------|-------------|
+| `classic` | 160 | classic | none | Default — clean ASCII art |
+| `crt` | 80 | classic | green phosphor (#33FF33 on #050505) | 1980s CRT terminal look |
+| `c64` | 40 | petscii | light blue on dark blue (#7C70DA on #352879) | Commodore 64 boot screen |
+| `sketch` | 160 | classic | none | Edge detection + invert for sketch effect |
+| `minimal` | 120 | simple | none | Low-detail, clean output |
 
-Simulates 1980s computer terminal appearance.
+`--crt` is shorthand for `--preset crt` (backward compatible).
+
+### CRT Preset
+
+Simulates 1980s green phosphor terminal appearance:
+- Fixed 80-column width
+- Green tint applied to all text
+- Dark background
+- Enhanced contrast via unsharp filter
+
+### C64 Preset
+
+Simulates a booted Commodore 64:
+- 40-column width (authentic C64 screen width)
+- PETSCII character set (Unicode Legacy Computing block)
+- Light blue text on dark blue background using the Pepto palette (widely considered most accurate for the VIC-II chip)
+- For best results, install [KreativeKorp Pet Me fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal
 
 ### Edge Detection (`--edge`)
 
@@ -256,7 +283,7 @@ Packages all ASCII frames into a **single, self-playing bash script**. The expor
 
 ```bash
 # Create a standalone ASCII movie
-video2ascii video.mp4 --crt --export retro_movie.sh
+video2ascii video.mp4 --preset crt --export retro_movie.sh
 
 # Share with friends - they just need bash!
 ./retro_movie.sh
@@ -274,7 +301,7 @@ Use cases:
 Renders ASCII frames as images and creates an MP4 video file:
 - Renders ASCII art using system monospace fonts
 - Preserves color information (if `--color` was used)
-- Applies CRT green tint (if `--crt` was used)
+- Applies color scheme tint (CRT green, C64 blue, etc. from `--preset`)
 - Burns subtitles into the video (if `--subtitle` was used)
 - Creates MP4 file playable in any video player
 
@@ -304,7 +331,7 @@ Subtitle burn-in uses a separate readable monospace font (Iosevka, IBM Plex Mono
 
 ```bash
 # Export as MP4 (H.265/HEVC - default)
-video2ascii video.mp4 --charset petscii --crt --export-mp4 output.mp4
+video2ascii video.mp4 --preset c64 --export-mp4 output.mp4
 
 # Export as ProRes 422 HQ
 video2ascii video.mp4 --color --charset braille --export-prores422 output-prores.mov
@@ -326,15 +353,16 @@ Use cases:
 
 ```
 video2ascii/
-├── cli.py              # CLI entry point (argparse, --web flag)
+├── cli.py              # CLI entry point (argparse, --preset/--crt flags)
 ├── converter.py        # Core: frame extraction (ffmpeg), ASCII conversion (Pillow), edge detection
+├── presets.py          # Preset definitions: ColorScheme dataclass, PRESETS dict (single source of truth)
 ├── player.py           # Terminal playback engine (ANSI escape sequences, subtitle display)
 ├── exporter.py         # Standalone .sh script export (gzip+base64 compressed)
 ├── mp4_exporter.py     # MP4/ProRes video export (renders ASCII to images, encodes with ffmpeg)
 ├── fonts.py            # Font discovery and resolution (resolve_font, list_available_fonts)
 ├── subtitle.py         # Subtitle generation: embedded stream extraction, whisper-cli transcription, SRT parsing
 ├── web/
-│   ├── app.py          # FastAPI backend: upload, convert, SSE progress, font list, export endpoints
+│   ├── app.py          # FastAPI backend: upload, convert, SSE progress, presets/fonts APIs, export
 │   ├── renderer.py     # ANSI-to-HTML converter for web display
 │   ├── server.py       # Standalone web server entry point
 │   └── static/
@@ -344,6 +372,7 @@ tests/
 ├── test_converter.py   # Frame extraction, ASCII conversion, edge detection tests
 ├── test_exporter.py    # Shell script export tests
 ├── test_fonts.py       # Font discovery and resolution tests
+├── test_presets.py     # Preset definitions, ColorScheme, serialization tests
 ├── test_mp4_exporter.py# MP4/ProRes export tests
 ├── test_player.py      # Terminal player tests
 ├── test_subtitle.py    # Subtitle generation, SRT parsing, whisper-cli integration tests
@@ -361,10 +390,12 @@ tests/
 
 ## Tips
 
-- **CRT Mode**: Works best in a terminal with a dark background. Retro fonts like "VT323" or "IBM Plex Mono" can enhance the appearance.
-- **PETSCII Mode**: Install and use the [KreativeKorp Pet Me fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal. Available variants: PetMe, PetMe64, PetMe128, PetMe2X, PetMe2Y, PetMe642Y, PetMe1282Y.
+- **Presets**: Use `--preset crt` for green phosphor CRT, `--preset c64` for Commodore 64, `--preset sketch` for line art, `--preset minimal` for clean output.
+- **CRT Preset**: Works best in a terminal with a dark background. Retro fonts like "VT323" or "IBM Plex Mono" can enhance the appearance.
+- **C64 Preset**: Install [KreativeKorp Pet Me fonts](https://www.kreativekorp.com/software/fonts/c64/) for authentic Commodore 64 rendering. Available variants: PetMe, PetMe64, PetMe128, PetMe2X, PetMe2Y, PetMe642Y, PetMe1282Y.
+- **PETSCII Charset**: You can use `--charset petscii` independently of presets, but the C64 preset bundles it with the right width and colors.
 - **Subtitles**: For best results, use a high-quality Whisper model (`ggml-large-v3-turbo.bin`). The Silero VAD model improves timestamp accuracy significantly.
-- **Width**: For CRT mode, 80 is classic. For modern displays, try 120-200 depending on your terminal size.
+- **Width**: Presets set width automatically (CRT=80, C64=40). For modern displays, try 120-200 depending on your terminal size.
 - **FPS**: Higher FPS = smoother playback but more processing. 10-15 FPS works well for most content.
 - **Speed**: Use `--speed 0.5` for slow-mo, `--speed 2` for double-speed.
 - **Edge + Color**: Combining edge detection with color preserves color information along detected edges.

@@ -404,9 +404,10 @@
 
             <div class="presets">
                 <h2>Presets</h2>
-                <div class="preset-buttons">
+                <div class="preset-buttons" id="presetButtons">
                     <button class="preset-btn" data-preset="classic">Classic</button>
                     <button class="preset-btn" data-preset="crt">CRT</button>
+                    <button class="preset-btn" data-preset="c64">C64</button>
                     <button class="preset-btn" data-preset="sketch">Sketch</button>
                     <button class="preset-btn" data-preset="minimal">Minimal</button>
                 </div>
@@ -541,37 +542,55 @@
         let fps = 12;
         let previewTimeout = null;
         
-        // Presets
-        const presets = {
-            classic: { width: 160, fps: 12, charset: 'classic', color: false, crt: false, invert: false, edge: false },
-            crt: { width: 80, fps: 12, charset: 'classic', color: true, crt: true, invert: false, edge: false },
-            sketch: { width: 160, fps: 12, charset: 'classic', color: false, crt: false, invert: true, edge: true },
-            minimal: { width: 120, fps: 10, charset: 'simple', color: false, crt: false, invert: false, edge: false }
-        };
+        // Presets (fetched from server, fallback to hardcoded)
+        let presets = {};
+        let activePresetName = null;
+        
+        async function fetchPresets() {
+            try {
+                const resp = await fetch('/api/presets');
+                presets = await resp.json();
+            } catch (err) {
+                console.error('Failed to fetch presets, using defaults:', err);
+                presets = {
+                    classic: { width: 160, fps: 12, charset: 'classic', color: false, invert: false, edge: false },
+                    crt: { width: 80, fps: 12, charset: 'classic', color: true, invert: false, edge: false, crt_filter: true, color_scheme: { tint: [51, 255, 51], bg: [5, 5, 5], blend: 0.8 } },
+                    c64: { width: 40, fps: 12, charset: 'petscii', color: true, invert: false, edge: false, crt_filter: true, color_scheme: { tint: [124, 112, 218], bg: [53, 40, 121], blend: 0.8 } },
+                    sketch: { width: 160, fps: 12, charset: 'classic', color: false, invert: true, edge: true },
+                    minimal: { width: 120, fps: 10, charset: 'simple', color: false, invert: false, edge: false },
+                };
+            }
+        }
+        fetchPresets();
         
         // Apply preset
         document.querySelectorAll('.preset-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                const preset = presets[btn.dataset.preset];
-                applyPreset(preset);
+                activePresetName = btn.dataset.preset;
+                const preset = presets[activePresetName];
+                if (preset) applyPreset(preset);
             });
         });
         
         function applyPreset(preset) {
-            document.getElementById('width').value = preset.width;
-            document.getElementById('widthValue').textContent = preset.width;
-            document.getElementById('fps').value = preset.fps;
-            document.getElementById('fpsValue').textContent = preset.fps;
-            document.getElementById('charset').value = preset.charset;
-            document.getElementById('color').checked = preset.color;
-            document.getElementById('crt').checked = preset.crt;
-            document.getElementById('invert').checked = preset.invert;
-            document.getElementById('edge').checked = preset.edge;
+            document.getElementById('width').value = preset.width || 160;
+            document.getElementById('widthValue').textContent = preset.width || 160;
+            document.getElementById('fps').value = preset.fps || 12;
+            document.getElementById('fpsValue').textContent = preset.fps || 12;
+            document.getElementById('charset').value = preset.charset || 'classic';
+            document.getElementById('color').checked = !!preset.color;
+            document.getElementById('crt').checked = !!preset.crt_filter;
+            document.getElementById('invert').checked = !!preset.invert;
+            document.getElementById('edge').checked = !!preset.edge;
             document.getElementById('edgeThresholdGroup').style.display = preset.edge ? 'flex' : 'none';
             document.getElementById('fontGroup').style.display = 'none';
             document.getElementById('fontSelect').innerHTML = '<option value="">Auto</option>';
+            
+            // Trigger charset change handler for font fetching (e.g. petscii)
+            document.getElementById('charset').dispatchEvent(new Event('change'));
+            
             updateLivePreview();
         }
         
@@ -736,6 +755,7 @@
             formData.append('crt', document.getElementById('crt').checked);
             formData.append('subtitle', document.getElementById('subtitle').checked);
             formData.append('font', document.getElementById('fontSelect').value);
+            formData.append('preset', activePresetName || '');
             
             // Show upload progress
             document.getElementById('progressSection').classList.remove('hidden');

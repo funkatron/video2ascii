@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from video2ascii.player import TerminalPlayer, play
+from video2ascii.presets import CRT_GREEN, C64_BLUE, ColorScheme
 
 
 class TestTerminalPlayer:
@@ -41,15 +42,13 @@ class TestTerminalPlayer:
         frames = [sample_ascii_frame] * 5
         player = TerminalPlayer(frames, fps=12, speed=1.0)
         
-        # Simulate interrupt
         player.interrupted = True
         player.cleanup()
         
-        # Cleanup should not raise
         assert True
     
-    def test_play_crt_mode_applies_green(self, sample_ascii_frame):
-        """Test CRT mode applies green color codes."""
+    def test_play_color_scheme_applies_tint(self, sample_ascii_frame):
+        """Test color_scheme applies tint color codes."""
         frames = [sample_ascii_frame] * 2
         
         printed_output = []
@@ -59,16 +58,57 @@ class TestTerminalPlayer:
         with patch("builtins.print", side_effect=mock_print):
             with patch("time.sleep"):
                 with patch("signal.signal"):
-                    player = TerminalPlayer(frames, fps=12, speed=100.0)  # Fast for testing
+                    player = TerminalPlayer(frames, fps=12, speed=100.0)
                     try:
-                        player.play(crt=True, loop=False, progress=False)
+                        player.play(color_scheme=CRT_GREEN, loop=False, progress=False)
                     except (KeyboardInterrupt, SystemExit):
                         pass
                 
-                # Check that CRT green code was printed
                 output_str = "".join(printed_output)
-                assert "\033[38;2;51;255;51m" in output_str or len(printed_output) == 0  # May exit early
+                # CRT_GREEN tint (51, 255, 51)
+                assert "\033[38;2;51;255;51m" in output_str or len(printed_output) == 0
     
+    def test_play_c64_scheme_applies_blue(self, sample_ascii_frame):
+        """Test C64 color scheme applies blue tint."""
+        frames = [sample_ascii_frame] * 2
+        
+        printed_output = []
+        def mock_print(*args, **kwargs):
+            printed_output.append("".join(str(a) for a in args))
+        
+        with patch("builtins.print", side_effect=mock_print):
+            with patch("time.sleep"):
+                with patch("signal.signal"):
+                    player = TerminalPlayer(frames, fps=12, speed=100.0)
+                    try:
+                        player.play(color_scheme=C64_BLUE, loop=False, progress=False)
+                    except (KeyboardInterrupt, SystemExit):
+                        pass
+                
+                output_str = "".join(printed_output)
+                # C64_BLUE tint (124, 112, 218)
+                assert "\033[38;2;124;112;218m" in output_str or len(printed_output) == 0
+
+    def test_play_no_scheme_no_tint(self, sample_ascii_frame):
+        """Test no color_scheme means no tint codes."""
+        frames = [sample_ascii_frame] * 2
+        
+        printed_output = []
+        def mock_print(*args, **kwargs):
+            printed_output.append("".join(str(a) for a in args))
+        
+        with patch("builtins.print", side_effect=mock_print):
+            with patch("time.sleep"):
+                with patch("signal.signal"):
+                    player = TerminalPlayer(frames, fps=12, speed=100.0)
+                    try:
+                        player.play(color_scheme=None, loop=False, progress=False)
+                    except (KeyboardInterrupt, SystemExit):
+                        pass
+                
+                output_str = "".join(printed_output)
+                assert "\033[38;2;51;255;51m" not in output_str
+
     def test_play_loop_mode(self, sample_ascii_frame):
         """Test loop mode repeats frames."""
         frames = [sample_ascii_frame] * 2
@@ -82,9 +122,9 @@ class TestTerminalPlayer:
             with patch("time.sleep"):
                 with patch("signal.signal"):
                     player = TerminalPlayer(frames, fps=12, speed=100.0)
-                    player.interrupted = True  # Stop immediately
+                    player.interrupted = True
                     try:
-                        player.play(crt=False, loop=True, progress=False)
+                        player.play(color_scheme=None, loop=True, progress=False)
                     except (KeyboardInterrupt, SystemExit):
                         pass
 
@@ -121,15 +161,15 @@ class TestTerminalPlayer:
                         subtitle_segments=segments,
                     )
                     try:
-                        player.play(crt=False, loop=False, progress=False)
+                        player.play(color_scheme=None, loop=False, progress=False)
                     except (KeyboardInterrupt, SystemExit):
                         pass
 
         output_str = "".join(printed_output)
         assert "Hello subtitle" in output_str
 
-    def test_play_with_subtitles_crt_green(self, sample_ascii_frame):
-        """Test subtitle text uses CRT green in CRT mode."""
+    def test_play_with_subtitles_uses_scheme_tint(self, sample_ascii_frame):
+        """Test subtitle text uses color scheme tint."""
         frames = [sample_ascii_frame] * 2
         segments = [(0.0, 10.0, "Green sub")]
 
@@ -145,12 +185,11 @@ class TestTerminalPlayer:
                         subtitle_segments=segments,
                     )
                     try:
-                        player.play(crt=True, loop=False, progress=False)
+                        player.play(color_scheme=CRT_GREEN, loop=False, progress=False)
                     except (KeyboardInterrupt, SystemExit):
                         pass
 
         output_str = "".join(printed_output)
-        # CRT green code should appear
         assert "\033[38;2;51;255;51m" in output_str
 
 
@@ -165,19 +204,17 @@ class TestPlayFunction:
             mock_player = MagicMock()
             mock_player_class.return_value = mock_player
             
-            play(frames, fps=12, speed=1.0, crt=False, loop=False, progress=False)
+            play(frames, fps=12, speed=1.0, color_scheme=None, loop=False, progress=False)
             
-            # Verify TerminalPlayer was instantiated correctly
             assert mock_player_class.called
             call_args = mock_player_class.call_args[0]
             assert call_args[0] == frames
             assert call_args[1] == 12
             assert call_args[2] == 1.0
             
-            # Verify play was called
             assert mock_player.play.called
             call_kwargs = mock_player.play.call_args[1]
-            assert call_kwargs["crt"] is False
+            assert call_kwargs["color_scheme"] is None
             assert call_kwargs["loop"] is False
             assert call_kwargs["progress"] is False
     
@@ -189,19 +226,17 @@ class TestPlayFunction:
             mock_player = MagicMock()
             mock_player_class.return_value = mock_player
             
-            play(frames, fps=15, speed=1.5, crt=True, loop=True, progress=True)
+            play(frames, fps=15, speed=1.5, color_scheme=CRT_GREEN, loop=True, progress=True)
             
-            # Verify TerminalPlayer was instantiated correctly
             assert mock_player_class.called
             call_args = mock_player_class.call_args[0]
             assert call_args[0] == frames
             assert call_args[1] == 15
             assert call_args[2] == 1.5
             
-            # Verify play was called
             assert mock_player.play.called
             call_kwargs = mock_player.play.call_args[1]
-            assert call_kwargs["crt"] is True
+            assert call_kwargs["color_scheme"] is CRT_GREEN
             assert call_kwargs["loop"] is True
             assert call_kwargs["progress"] is True
 

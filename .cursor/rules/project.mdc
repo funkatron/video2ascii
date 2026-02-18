@@ -21,11 +21,12 @@ video2ascii converts video files to ASCII art. It supports terminal playback, we
 
 | Module | Purpose |
 |--------|---------|
-| `cli.py` | CLI entry point. Handles arg parsing, `--web` flag launches FastAPI server. |
+| `cli.py` | CLI entry point. Handles arg parsing, `--preset`/`--crt` flags, `--web` flag launches FastAPI server. |
 | `converter.py` | **Core logic.** Frame extraction via ffmpeg, ASCII conversion via Pillow, edge detection. `convert_all()` parallelizes across CPU cores with `multiprocessing.Pool`. |
-| `player.py` | Terminal playback engine using ANSI escape sequences. Handles loop, speed, CRT green tint, subtitle display. |
+| `presets.py` | **Preset definitions.** `ColorScheme` dataclass (tint, bg, blend), named schemes (`CRT_GREEN`, `C64_BLUE`), `PRESETS` dict (single source of truth for CLI/web). `serialize_presets()` for API. |
+| `player.py` | Terminal playback engine using ANSI escape sequences. Handles loop, speed, color scheme tint, subtitle display. |
 | `exporter.py` | Exports frames as standalone bash script (gzip+base64 compressed). |
-| `mp4_exporter.py` | Renders ASCII frames to images and encodes MP4/ProRes via ffmpeg. Uses `fonts.py` for font resolution. Burns subtitles into video. |
+| `mp4_exporter.py` | Renders ASCII frames to images and encodes MP4/ProRes via ffmpeg. Uses `fonts.py` for font resolution. Burns subtitles into video. Accepts `ColorScheme` for tinting. |
 | `fonts.py` | **Font discovery and resolution.** `resolve_font(charset, font_override)` is the single entry point. Manages PetMe variants for PETSCII, braille font selection, and general monospace fallback. `list_available_fonts(charset)` for web UI. `get_subtitle_font_name()` for ffmpeg subtitle burn-in. |
 | `subtitle.py` | **Subtitle generation.** Extracts embedded subtitle streams via ffprobe/ffmpeg. Falls back to whisper-cli (whisper.cpp) transcription with VAD. Parses SRT format. |
 
@@ -33,8 +34,8 @@ video2ascii converts video files to ASCII art. It supports terminal playback, we
 
 | Module | Purpose |
 |--------|---------|
-| `app.py` | FastAPI backend. Endpoints: upload (`/api/convert`), job status, SSE progress stream (`/api/jobs/{id}/stream`), frame retrieval, font list (`/api/fonts?charset=X`), export (.sh, .mp4), job deletion. Jobs stored in-memory dict. Processing runs in thread pool via `asyncio.run_in_executor`. |
-| `renderer.py` | Converts ANSI color escape sequences to HTML `<span>` elements with inline `color` styles. Handles CRT green tint mode. |
+| `app.py` | FastAPI backend. Endpoints: upload (`/api/convert`), job status, SSE progress stream (`/api/jobs/{id}/stream`), frame retrieval, presets (`/api/presets`), font list (`/api/fonts?charset=X`), export (.sh, .mp4), job deletion. Jobs stored in-memory dict. Processing runs in thread pool via `asyncio.run_in_executor`. |
+| `renderer.py` | Converts ANSI color escape sequences to HTML `<span>` elements with inline `color` styles. Handles color scheme tinting. |
 | `server.py` | Standalone entry point for web server. Opens browser automatically. |
 | `static/index.html` | Single-page frontend. Vanilla HTML/CSS/JS (no framework). Braun/midcentury-inspired design with sidebar layout. Uses XHR for upload progress, EventSource (SSE) for conversion progress. Conditional font chooser for PETSCII charset. |
 
@@ -59,7 +60,7 @@ video2ascii converts video files to ASCII art. It supports terminal playback, we
 
 ### Testing
 - Tests in `tests/` using pytest.
-- Test files mirror source structure: `test_converter.py`, `test_cli.py`, `test_web_app.py`, `test_fonts.py`, `test_subtitle.py`, etc.
+- Test files mirror source structure: `test_converter.py`, `test_cli.py`, `test_web_app.py`, `test_fonts.py`, `test_presets.py`, `test_subtitle.py`, etc.
 - Web app tests use `FastAPI.TestClient` (requires `httpx`).
 - Focus on behavior, not implementation details. Avoid brittle assertions (e.g., exact SQL strings).
 - Run: `uv run pytest` or `uv run pytest --cov=video2ascii`
@@ -93,6 +94,15 @@ uv run python -m video2ascii.cli --web
 4. Whisper uses VAD (`--vad --vad-model`) with `ggml-silero-v5.1.2.bin` for precise timestamps
 5. `parse_srt(srt_path)` returns `list[tuple[float, float, str]]` (start, end, text)
 6. Environment variables: `VIDEO2ASCII_WHISPER_CLI_PATH`, `VIDEO2ASCII_WHISPER_MODEL`, `VIDEO2ASCII_VAD_MODEL`
+
+### Presets and Color Schemes (`presets.py`)
+- `ColorScheme` is a frozen dataclass: `tint` (RGB tuple), `bg` (RGB tuple), `blend` (float, default 0.8)
+- `blend_color(r, g, b)` mixes original color toward tint; used by player, mp4_exporter, and web renderer
+- Named schemes: `CRT_GREEN` (#33FF33 on #050505), `C64_BLUE` (#7C70DA on #352879)
+- `PRESETS` dict maps preset names to dicts of `width`, `fps`, `charset`, `color`, `invert`, `edge`, plus optional `color_scheme` and `crt_filter`
+- CLI: `--preset NAME` sets defaults; explicit flags override. `--crt` is an alias for `--preset crt`.
+- Web: `/api/presets` returns `serialize_presets()`, frontend fetches and builds preset buttons dynamically
+- `color_scheme` replaces the old `crt: bool` parameter across player, mp4_exporter, and web renderer
 
 ### Invert Mode
 - **Grayscale** (`color=False`): Reverses the character set (dark chars for bright pixels, vice versa).

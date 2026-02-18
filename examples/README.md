@@ -52,7 +52,7 @@ All exported scripts are self-contained and require only bash:
 ./examples/not-ai.sh --loop --crt
 ./examples/not-ai.sh --speed 1.5 --progress
 
-# Try different character sets
+# Try different presets
 ./examples/not-ai-petscii.sh --crt
 ./examples/not-ai-blocks.sh --loop
 
@@ -68,7 +68,7 @@ Export your own ASCII movies:
 ```bash
 # Shell script (terminal playback)
 video2ascii input.mp4 --export examples/my-movie.sh
-video2ascii input.mp4 --charset petscii --crt --export examples/retro-movie.sh
+video2ascii input.mp4 --preset c64 --export examples/retro-movie.sh
 
 # With subtitles
 video2ascii input.mp4 --subtitle --export examples/subtitled-movie.sh
@@ -96,4 +96,4 @@ uv pip install -e ".[web]"
 video2ascii --web
 ```
 
-The web GUI supports drag-and-drop upload, presets, live playback, subtitle generation, font selection for PETSCII, and export to .sh or .mp4.
+The web GUI supports drag-and-drop upload, presets (Classic, CRT, C64, Sketch, Minimal), live playback, subtitle generation, font selection for PETSCII, and export to .sh or .mp4.
