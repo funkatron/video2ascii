@@ -30,6 +30,8 @@ Examples:
   %(prog)s input.mp4 --edge --invert
   %(prog)s input.mp4 --loop --speed 1.5 --progress
   %(prog)s input.mp4 --export movie.sh
+  %(prog)s input.mp4 --subtitle
+  %(prog)s input.mp4 --subtitle --export-mp4 out.mp4
         """,
     )
 
@@ -138,6 +140,21 @@ Examples:
         type=Path,
         metavar="FILE",
         help="Export ASCII frames as video file using ProRes 422 HQ codec",
+    )
+
+    parser.add_argument(
+        "--subtitle",
+        action="store_true",
+        help="Auto-generate subtitles from audio (requires whisper-cli from whisper-cpp)",
+    )
+
+    parser.add_argument(
+        "--font",
+        type=str,
+        default=None,
+        metavar="NAME_OR_PATH",
+        help="Font for MP4/ProRes export (e.g. PetMe128, /path/to/font.ttf). "
+             "PetMe variants: PetMe, PetMe64, PetMe128, PetMe2X, PetMe2Y, PetMe642Y, PetMe1282Y",
     )
 
     parser.add_argument(
@@ -286,16 +303,30 @@ def main():
 
         logger.info(f"Converted {len(frames)} frames to ASCII")
 
+        # Generate subtitles if requested
+        subtitle_segments = None
+        subtitle_srt_path = None
+        if args.subtitle:
+            from video2ascii.subtitle import generate_srt, parse_srt
+
+            logger.info("Generating subtitles from audio...")
+            subtitle_srt_path = generate_srt(args.input, work_dir)
+            if subtitle_srt_path:
+                subtitle_segments = parse_srt(subtitle_srt_path)
+                logger.info(f"Generated {len(subtitle_segments)} subtitle segments")
+            else:
+                logger.warning("Subtitle generation failed, continuing without subtitles")
+
         # Export modes
         if args.export:
+            if args.font:
+                logger.debug("--font ignored for .sh export (only applies to MP4/ProRes)")
             logger.info(f"Packaging {len(frames)} frames into: {args.export}")
             export(frames, args.export, args.fps, args.crt)
             return
 
         if args.export_mp4:
-            # Calculate target width for MP4 export (scale up for better quality)
-            # Use a reasonable HD width, scaling based on ASCII width
-            target_mp4_width = min(1920, max(1280, args.width * 16))  # Scale up from character width
+            target_mp4_width = min(1920, max(1280, args.width * 16))
             logger.debug(f"MP4 target width: {target_mp4_width} (scaled from ASCII width {args.width})")
             export_mp4(
                 frames,
@@ -307,13 +338,13 @@ def main():
                 charset=args.charset,
                 target_width=target_mp4_width,
                 codec="h265",
+                subtitle_path=subtitle_srt_path,
+                font_override=args.font,
             )
             return
 
         if args.export_prores422:
-            # Calculate target width for ProRes export (scale up for better quality)
-            # Use a reasonable HD width, scaling based on ASCII width
-            target_mp4_width = min(1920, max(1280, args.width * 16))  # Scale up from character width
+            target_mp4_width = min(1920, max(1280, args.width * 16))
             logger.debug(f"ProRes 422 target width: {target_mp4_width} (scaled from ASCII width {args.width})")
             export_mp4(
                 frames,
@@ -325,6 +356,8 @@ def main():
                 charset=args.charset,
                 target_width=target_mp4_width,
                 codec="prores422",
+                subtitle_path=subtitle_srt_path,
+                font_override=args.font,
             )
             return
 
@@ -335,7 +368,8 @@ def main():
         if args.crt:
             logger.info("(CRT mode: 80 columns, green phosphor)")
         if args.charset.lower() == "petscii":
-            logger.info("(PETSCII mode: For best results, use KreativeKorp Pet Me 64 fonts)")
+            logger.info("(PETSCII mode: For best results, use KreativeKorp Pet Me fonts)")
+            logger.info("  Variants: PetMe, PetMe64, PetMe128, PetMe2X, PetMe2Y, PetMe642Y, PetMe1282Y")
             logger.info("  Install: https://www.kreativekorp.com/software/fonts/c64/")
 
         play(
@@ -345,6 +379,7 @@ def main():
             crt=args.crt,
             loop=args.loop,
             progress=args.progress,
+            subtitle_segments=subtitle_segments,
         )
 
     finally:

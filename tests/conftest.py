@@ -60,20 +60,6 @@ def mock_ffprobe():
 
 
 @pytest.fixture
-def mock_font_paths(monkeypatch):
-    """Mock font path existence checks."""
-    def mock_exists(self):
-        # Return False for all font paths (no fonts installed in test env)
-        return False
-    
-    # Patch Path.exists for font searches
-    original_exists = Path.exists
-    monkeypatch.setattr(Path, "exists", mock_exists)
-    
-    yield
-
-
-@pytest.fixture
 def sample_ascii_frame():
     """Create a sample ASCII frame string."""
     return "  .:-=+*#%@\n" * 5

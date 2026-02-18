@@ -15,7 +15,9 @@ from fastapi.staticfiles import StaticFiles
 
 from video2ascii.converter import check_ffmpeg, extract_frames, convert_all, CHARSETS
 from video2ascii.exporter import export
+from video2ascii.fonts import list_available_fonts
 from video2ascii.mp4_exporter import export_mp4
+from video2ascii.subtitle import generate_srt, parse_srt
 from video2ascii.web.renderer import frames_to_html
 
 logger = logging.getLogger(__name__)
@@ -54,6 +56,7 @@ async def _process_video_async(
     aspect_ratio: float,
     charset: str,
     crt: bool,
+    subtitle: bool = False,
 ) -> None:
     """
     Asynchronous video processing function.
@@ -93,8 +96,22 @@ async def _process_video_async(
             charset,
         )
 
+        # Generate subtitles if requested
+        subtitle_segments = None
+        subtitle_srt_path = None
+        if subtitle:
+            jobs[job_id]["progress"] = {"stage": "generating subtitles", "current": 0, "total": 0}
+            subtitle_srt_path = await loop.run_in_executor(
+                None, generate_srt, video_path, work_dir,
+            )
+            if subtitle_srt_path:
+                subtitle_segments = parse_srt(subtitle_srt_path)
+                logger.info("Generated %d subtitle segments", len(subtitle_segments))
+
         jobs[job_id]["status"] = JobStatus.COMPLETED
         jobs[job_id]["frames"] = frames
+        jobs[job_id]["subtitle_segments"] = subtitle_segments
+        jobs[job_id]["subtitle_srt_path"] = subtitle_srt_path
         jobs[job_id]["progress"] = {"stage": "completed", "current": len(frames), "total": len(frames)}
 
     except Exception as e:
@@ -114,6 +131,16 @@ async def index():
         return HTMLResponse(content=f.read())
 
 
+@app.get("/api/fonts")
+async def get_fonts(charset: str = "classic"):
+    """Return font names available for a given charset.
+
+    For ``petscii`` this returns installed PetMe variant names.
+    For other charsets an empty list is returned.
+    """
+    return {"fonts": list_available_fonts(charset)}
+
+
 @app.post("/api/convert")
 async def convert_video(
     file: UploadFile = File(...),
@@ -126,6 +153,8 @@ async def convert_video(
     aspect_ratio: float = Form(1.2),
     charset: str = Form("classic"),
     crt: bool = Form(False),
+    subtitle: bool = Form(False),
+    font: str = Form(""),
 ):
     """
     Upload video and start conversion job.
@@ -134,7 +163,10 @@ async def convert_video(
         Job ID
     """
     # Debug logging
-    logger.info(f"Convert request: color={color}, invert={invert}, crt={crt}, edge={edge}")
+    logger.info(
+        "Convert request: color=%s, invert=%s, crt=%s, edge=%s, subtitle=%s, font=%s",
+        color, invert, crt, edge, subtitle, font,
+    )
     
     # Validate inputs
     if width < 20 or width > 320:
@@ -178,8 +210,12 @@ async def convert_video(
             "aspect_ratio": aspect_ratio,
             "charset": charset,
             "crt": crt,
+            "subtitle": subtitle,
+            "font": font or None,
         },
         "frames": None,
+        "subtitle_segments": None,
+        "subtitle_srt_path": None,
         "error": None,
         "progress": {"stage": "pending", "current": 0, "total": 0},
     }
@@ -199,6 +235,7 @@ async def convert_video(
             aspect_ratio,
             charset,
             crt,
+            subtitle=subtitle,
         )
     )
 
@@ -263,7 +300,8 @@ async def get_frames(job_id: str):
 
     job = jobs[job_id]
     if job["status"] != JobStatus.COMPLETED:
-        raise HTTPException(status_code=400, detail=f"Job not completed (status: {job["status"]})")
+        status = job["status"]
+        raise HTTPException(status_code=400, detail=f"Job not completed (status: {status})")
 
     if job["frames"] is None:
         raise HTTPException(status_code=500, detail="Frames not available")
@@ -272,7 +310,18 @@ async def get_frames(job_id: str):
     crt = job["params"]["crt"]
     html_frames = frames_to_html(job["frames"], crt=crt)
 
-    return {"frames": html_frames, "fps": job["params"]["fps"]}
+    response = {"frames": html_frames, "fps": job["params"]["fps"]}
+
+    # Include subtitle segments if available
+    subtitle_segments = job.get("subtitle_segments")
+    if subtitle_segments:
+        # Convert tuples to dicts for JSON serialization
+        response["subtitle_segments"] = [
+            {"start": start, "end": end, "text": text}
+            for start, end, text in subtitle_segments
+        ]
+
+    return response
 
 
 @app.get("/api/jobs/{job_id}/frame/{frame_num}")
@@ -283,7 +332,8 @@ async def get_frame(job_id: str, frame_num: int):
 
     job = jobs[job_id]
     if job["status"] != JobStatus.COMPLETED:
-        raise HTTPException(status_code=400, detail=f"Job not completed (status: {job["status"]})")
+        status = job["status"]
+        raise HTTPException(status_code=400, detail=f"Job not completed (status: {status})")
 
     if job["frames"] is None:
         raise HTTPException(status_code=500, detail="Frames not available")
@@ -306,7 +356,8 @@ async def export_sh(job_id: str):
 
     job = jobs[job_id]
     if job["status"] != JobStatus.COMPLETED:
-        raise HTTPException(status_code=400, detail=f"Job not completed (status: {job["status"]})")
+        status = job["status"]
+        raise HTTPException(status_code=400, detail=f"Job not completed (status: {status})")
 
     if job["frames"] is None:
         raise HTTPException(status_code=500, detail="Frames not available")
@@ -335,7 +386,8 @@ async def export_mp4_endpoint(job_id: str):
 
     job = jobs[job_id]
     if job["status"] != JobStatus.COMPLETED:
-        raise HTTPException(status_code=400, detail=f"Job not completed (status: {job["status"]})")
+        status = job["status"]
+        raise HTTPException(status_code=400, detail=f"Job not completed (status: {status})")
 
     if job["frames"] is None:
         raise HTTPException(status_code=500, detail="Frames not available")
@@ -354,6 +406,8 @@ async def export_mp4_endpoint(job_id: str):
         charset=job["params"]["charset"],
         target_width=target_width,
         codec="h265",
+        subtitle_path=job.get("subtitle_srt_path"),
+        font_override=job["params"].get("font"),
     )
 
     return FileResponse(

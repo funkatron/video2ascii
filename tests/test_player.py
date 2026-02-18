@@ -89,6 +89,71 @@ class TestTerminalPlayer:
                         pass
 
 
+    def test_initialization_with_subtitles(self, sample_ascii_frame):
+        """Test initialization with subtitle segments."""
+        frames = [sample_ascii_frame] * 5
+        segments = [(0.0, 2.0, "Hello"), (2.0, 4.0, "World")]
+        player = TerminalPlayer(frames, fps=12, speed=1.0, subtitle_segments=segments)
+
+        assert player.subtitle_segments == segments
+
+    def test_initialization_without_subtitles(self, sample_ascii_frame):
+        """Test initialization without subtitle segments defaults to None."""
+        frames = [sample_ascii_frame] * 5
+        player = TerminalPlayer(frames, fps=12, speed=1.0)
+
+        assert player.subtitle_segments is None
+
+    def test_play_with_subtitles_displays_text(self, sample_ascii_frame):
+        """Test subtitle text is printed during playback."""
+        frames = [sample_ascii_frame] * 2
+        segments = [(0.0, 10.0, "Hello subtitle")]
+
+        printed_output = []
+        def mock_print(*args, **kwargs):
+            printed_output.append("".join(str(a) for a in args))
+
+        with patch("builtins.print", side_effect=mock_print):
+            with patch("time.sleep"):
+                with patch("signal.signal"):
+                    player = TerminalPlayer(
+                        frames, fps=12, speed=100.0,
+                        subtitle_segments=segments,
+                    )
+                    try:
+                        player.play(crt=False, loop=False, progress=False)
+                    except (KeyboardInterrupt, SystemExit):
+                        pass
+
+        output_str = "".join(printed_output)
+        assert "Hello subtitle" in output_str
+
+    def test_play_with_subtitles_crt_green(self, sample_ascii_frame):
+        """Test subtitle text uses CRT green in CRT mode."""
+        frames = [sample_ascii_frame] * 2
+        segments = [(0.0, 10.0, "Green sub")]
+
+        printed_output = []
+        def mock_print(*args, **kwargs):
+            printed_output.append("".join(str(a) for a in args))
+
+        with patch("builtins.print", side_effect=mock_print):
+            with patch("time.sleep"):
+                with patch("signal.signal"):
+                    player = TerminalPlayer(
+                        frames, fps=12, speed=100.0,
+                        subtitle_segments=segments,
+                    )
+                    try:
+                        player.play(crt=True, loop=False, progress=False)
+                    except (KeyboardInterrupt, SystemExit):
+                        pass
+
+        output_str = "".join(printed_output)
+        # CRT green code should appear
+        assert "\033[38;2;51;255;51m" in output_str
+
+
 class TestPlayFunction:
     """Tests for play function."""
     
@@ -139,3 +204,17 @@ class TestPlayFunction:
             assert call_kwargs["crt"] is True
             assert call_kwargs["loop"] is True
             assert call_kwargs["progress"] is True
+
+    def test_play_passes_subtitle_segments(self, sample_ascii_frame):
+        """Test play function passes subtitle_segments to TerminalPlayer."""
+        frames = [sample_ascii_frame] * 3
+        segments = [(0.0, 2.0, "Hi")]
+
+        with patch("video2ascii.player.TerminalPlayer") as mock_player_class:
+            mock_player = MagicMock()
+            mock_player_class.return_value = mock_player
+
+            play(frames, fps=12, subtitle_segments=segments)
+
+            call_kwargs = mock_player_class.call_args[1]
+            assert call_kwargs["subtitle_segments"] == segments

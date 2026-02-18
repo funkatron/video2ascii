@@ -53,6 +53,27 @@ video2ascii input.mp4 --color --charset classic --export-mp4 examples/my-movie.m
 video2ascii input.mp4 --color --charset braille --export-mp4 examples/my-braille-movie.mp4
 ```
 
+### Subtitle Examples (Sintel Trailer)
+
+- `sintel-subtitle.sh` - Classic charset with auto-generated subtitles (terminal playback)
+- `sintel-subtitle-color.mp4` - Classic charset with color and subtitles burned in
+
+Subtitles are auto-generated from the audio via whisper-cli (whisper.cpp). The Sintel trailer dialogue:
+
+> "What brings you to the land of the gatekeepers?"
+> "I'm searching for someone."
+> "A dangerous quest for our lone hunter."
+> "I've been alone for as long as I can remember."
+
+```bash
+# Play with subtitles in terminal
+./examples/sintel-subtitle.sh
+./examples/sintel-subtitle.sh --loop --progress
+
+# The MP4 has subtitles burned in -- play with any video player
+open examples/sintel-subtitle-color.mp4
+```
+
 ## Web GUI
 
 You can also create and preview ASCII art using the browser-based web GUI:

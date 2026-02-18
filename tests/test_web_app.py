@@ -185,3 +185,118 @@ class TestWebApp:
         """Test deleting non-existent job."""
         response = client.delete("/api/jobs/nonexistent")
         assert response.status_code == 404
+
+    @patch("video2ascii.web.app.check_ffmpeg")
+    @patch("video2ascii.web.app.extract_frames")
+    @patch("video2ascii.web.app.convert_all")
+    def test_convert_with_subtitle_param(
+        self, mock_convert_all, mock_extract_frames, mock_check_ffmpeg
+    ):
+        """Test convert endpoint accepts subtitle=True."""
+        mock_check_ffmpeg.return_value = None
+        mock_extract_frames.return_value = [Path("/tmp/frame_000001.png")]
+        mock_convert_all.return_value = ["Frame 1"]
+
+        files = {"file": ("test.mp4", b"fake video data", "video/mp4")}
+        data = {
+            "width": 160,
+            "fps": 12,
+            "color": False,
+            "invert": False,
+            "edge": False,
+            "edge_threshold": 0.15,
+            "aspect_ratio": 1.2,
+            "charset": "classic",
+            "crt": False,
+            "subtitle": True,
+        }
+
+        response = client.post("/api/convert", files=files, data=data)
+        assert response.status_code == 200
+        result = response.json()
+        assert "job_id" in result
+        job_id = result["job_id"]
+        assert jobs[job_id]["params"]["subtitle"] is True
+
+    def test_get_frames_includes_subtitle_segments(self):
+        """Test frames response includes subtitle_segments when available."""
+        job_id = "test-job-with-subs"
+        jobs[job_id] = {
+            "status": JobStatus.COMPLETED,
+            "frames": ["Frame 1", "Frame 2"],
+            "subtitle_segments": [(0.0, 2.0, "Hello"), (2.0, 4.0, "World")],
+            "params": {"crt": False, "fps": 12},
+        }
+
+        response = client.get(f"/api/jobs/{job_id}/frames")
+        assert response.status_code == 200
+        result = response.json()
+        assert "subtitle_segments" in result
+        assert len(result["subtitle_segments"]) == 2
+        assert result["subtitle_segments"][0]["text"] == "Hello"
+        assert result["subtitle_segments"][0]["start"] == 0.0
+        assert result["subtitle_segments"][0]["end"] == 2.0
+
+    def test_get_frames_no_subtitles(self):
+        """Test frames response omits subtitle_segments when None."""
+        job_id = "test-job-no-subs"
+        jobs[job_id] = {
+            "status": JobStatus.COMPLETED,
+            "frames": ["Frame 1"],
+            "subtitle_segments": None,
+            "params": {"crt": False, "fps": 12},
+        }
+
+        response = client.get(f"/api/jobs/{job_id}/frames")
+        assert response.status_code == 200
+        result = response.json()
+        assert "subtitle_segments" not in result
+
+    def test_fonts_endpoint_petscii(self):
+        """Test /api/fonts returns font list for petscii."""
+        with patch("video2ascii.web.app.list_available_fonts", return_value=["PetMe64", "PetMe128"]):
+            response = client.get("/api/fonts?charset=petscii")
+        assert response.status_code == 200
+        result = response.json()
+        assert "fonts" in result
+        assert "PetMe64" in result["fonts"]
+
+    def test_fonts_endpoint_classic_empty(self):
+        """Test /api/fonts returns empty list for non-petscii charsets."""
+        with patch("video2ascii.web.app.list_available_fonts", return_value=[]):
+            response = client.get("/api/fonts?charset=classic")
+        assert response.status_code == 200
+        result = response.json()
+        assert result["fonts"] == []
+
+    @patch("video2ascii.web.app.check_ffmpeg")
+    @patch("video2ascii.web.app.extract_frames")
+    @patch("video2ascii.web.app.convert_all")
+    def test_convert_with_font_param(
+        self, mock_convert_all, mock_extract_frames, mock_check_ffmpeg
+    ):
+        """Test convert endpoint accepts font parameter."""
+        mock_check_ffmpeg.return_value = None
+        mock_extract_frames.return_value = [Path("/tmp/frame_000001.png")]
+        mock_convert_all.return_value = ["Frame 1"]
+
+        files = {"file": ("test.mp4", b"fake video data", "video/mp4")}
+        data = {
+            "width": 160,
+            "fps": 12,
+            "color": False,
+            "invert": False,
+            "edge": False,
+            "edge_threshold": 0.15,
+            "aspect_ratio": 1.2,
+            "charset": "petscii",
+            "crt": False,
+            "subtitle": False,
+            "font": "PetMe128",
+        }
+
+        response = client.post("/api/convert", files=files, data=data)
+        assert response.status_code == 200
+        result = response.json()
+        job_id = result["job_id"]
+        assert jobs[job_id]["params"]["font"] == "PetMe128"

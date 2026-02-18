@@ -8,6 +8,10 @@ import pytest
 
 from video2ascii.cli import main, parse_args
 
+# ---------------------------------------------------------------------------
+# parse_args helpers
+# ---------------------------------------------------------------------------
+
 
 class TestParseArgs:
     """Tests for parse_args function."""
@@ -213,3 +217,169 @@ class TestMain:
                             sys.argv = ["video2ascii", str(test_video), "--no-cache"]
                             main()
                             mock_rmtree.assert_called_once()
+
+
+class TestSubtitleFlag:
+    """Tests for --subtitle CLI flag."""
+
+    def test_subtitle_flag_parses(self, temp_work_dir):
+        """Test --subtitle flag is parsed correctly."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+
+        with patch("sys.argv", ["video2ascii", str(test_video), "--subtitle"]):
+            args = parse_args()
+
+        assert args.subtitle is True
+
+    def test_subtitle_default_is_false(self, temp_work_dir):
+        """Test subtitle defaults to False."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+
+        with patch("sys.argv", ["video2ascii", str(test_video)]):
+            args = parse_args()
+
+        assert args.subtitle is False
+
+    def test_subtitle_calls_generate_srt(self, temp_work_dir, sample_ascii_frame):
+        """Test --subtitle triggers SRT generation and passes segments to player."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+
+        fake_srt = temp_work_dir / "transcript.srt"
+        fake_srt.write_text(
+            "1\n00:00:00,000 --> 00:00:02,000\nHello\n",
+            encoding="utf-8",
+        )
+
+        with patch("video2ascii.cli.check_ffmpeg"):
+            with patch("video2ascii.cli.extract_frames") as mock_extract:
+                mock_extract.return_value = [temp_work_dir / "frame_000001.png"]
+                with patch("video2ascii.cli.convert_all") as mock_convert:
+                    mock_convert.return_value = [sample_ascii_frame]
+                    with patch("video2ascii.cli.play") as mock_play:
+                        with patch("video2ascii.subtitle.generate_srt", return_value=fake_srt):
+                            sys.argv = ["video2ascii", str(test_video), "--subtitle"]
+                            main()
+
+                            # Verify play was called with subtitle_segments
+                            call_kwargs = mock_play.call_args[1]
+                            assert "subtitle_segments" in call_kwargs
+                            assert call_kwargs["subtitle_segments"] is not None
+                            assert len(call_kwargs["subtitle_segments"]) == 1
+                            assert call_kwargs["subtitle_segments"][0][2] == "Hello"
+
+    def test_subtitle_mp4_passes_srt_path(self, temp_work_dir, sample_ascii_frame):
+        """Test --subtitle with --export-mp4 passes SRT path to exporter."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+        output_mp4 = temp_work_dir / "output.mp4"
+
+        fake_srt = temp_work_dir / "transcript.srt"
+        fake_srt.write_text("1\n00:00:00,000 --> 00:00:02,000\nHi\n", encoding="utf-8")
+
+        with patch("video2ascii.cli.check_ffmpeg"):
+            with patch("video2ascii.cli.extract_frames") as mock_extract:
+                mock_extract.return_value = [temp_work_dir / "frame_000001.png"]
+                with patch("video2ascii.cli.convert_all") as mock_convert:
+                    mock_convert.return_value = [sample_ascii_frame]
+                    with patch("video2ascii.cli.export_mp4") as mock_export:
+                        with patch("video2ascii.subtitle.generate_srt", return_value=fake_srt):
+                            sys.argv = [
+                                "video2ascii", str(test_video),
+                                "--subtitle", "--export-mp4", str(output_mp4),
+                            ]
+                            main()
+
+                            call_kwargs = mock_export.call_args[1]
+                            assert call_kwargs["subtitle_path"] == fake_srt
+
+
+class TestFontFlag:
+    """Tests for --font CLI flag."""
+
+    def test_font_flag_parses(self, temp_work_dir):
+        """Test --font flag is parsed correctly."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+
+        with patch("sys.argv", ["video2ascii", str(test_video), "--font", "PetMe128"]):
+            args = parse_args()
+
+        assert args.font == "PetMe128"
+
+    def test_font_default_is_none(self, temp_work_dir):
+        """Test font defaults to None."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+
+        with patch("sys.argv", ["video2ascii", str(test_video)]):
+            args = parse_args()
+
+        assert args.font is None
+
+    def test_font_threaded_to_export_mp4(self, temp_work_dir, sample_ascii_frame):
+        """Test --font is passed as font_override to export_mp4."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+        output_mp4 = temp_work_dir / "output.mp4"
+
+        with patch("video2ascii.cli.check_ffmpeg"):
+            with patch("video2ascii.cli.extract_frames") as mock_extract:
+                mock_extract.return_value = [temp_work_dir / "frame_000001.png"]
+                with patch("video2ascii.cli.convert_all") as mock_convert:
+                    mock_convert.return_value = [sample_ascii_frame]
+                    with patch("video2ascii.cli.export_mp4") as mock_export:
+                        sys.argv = [
+                            "video2ascii", str(test_video),
+                            "--export-mp4", str(output_mp4),
+                            "--font", "PetMe128",
+                        ]
+                        main()
+
+                        call_kwargs = mock_export.call_args[1]
+                        assert call_kwargs["font_override"] == "PetMe128"
+
+    def test_font_ignored_for_sh_export(self, temp_work_dir, sample_ascii_frame):
+        """Test --font is silently ignored for .sh export."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+        output_sh = temp_work_dir / "output.sh"
+
+        with patch("video2ascii.cli.check_ffmpeg"):
+            with patch("video2ascii.cli.extract_frames") as mock_extract:
+                mock_extract.return_value = [temp_work_dir / "frame_000001.png"]
+                with patch("video2ascii.cli.convert_all") as mock_convert:
+                    mock_convert.return_value = [sample_ascii_frame]
+                    with patch("video2ascii.cli.export") as mock_export:
+                        sys.argv = [
+                            "video2ascii", str(test_video),
+                            "--export", str(output_sh),
+                            "--font", "PetMe128",
+                        ]
+                        main()
+                        # export() should be called (no font_override param)
+                        mock_export.assert_called_once()
+
+    def test_font_threaded_to_prores_export(self, temp_work_dir, sample_ascii_frame):
+        """Test --font is passed to export_mp4 in ProRes mode."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+        output_mov = temp_work_dir / "output.mov"
+
+        with patch("video2ascii.cli.check_ffmpeg"):
+            with patch("video2ascii.cli.extract_frames") as mock_extract:
+                mock_extract.return_value = [temp_work_dir / "frame_000001.png"]
+                with patch("video2ascii.cli.convert_all") as mock_convert:
+                    mock_convert.return_value = [sample_ascii_frame]
+                    with patch("video2ascii.cli.export_mp4") as mock_export:
+                        sys.argv = [
+                            "video2ascii", str(test_video),
+                            "--export-prores422", str(output_mov),
+                            "--font", "/path/to/font.ttf",
+                        ]
+                        main()
+
+                        call_kwargs = mock_export.call_args[1]
+                        assert call_kwargs["font_override"] == "/path/to/font.ttf"

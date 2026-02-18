@@ -50,7 +50,7 @@ htmlcov/
 coverage.xml
 *.cover
 
-# Test/development artifacts (but allow examples/)
+# Test/development artifacts (but allow examples/ and fixtures/)
 *.mp4
 !examples/*.mp4
-!examples/*.mp4
+!fixtures/*.mp4

@@ -371,6 +371,23 @@
             padding: 6px 12px;
             font-size: 0.65rem;
         }
+        
+        .subtitle-overlay {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            padding: 0;
+            font-size: 0.7rem;
+            font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            text-align: center;
+            max-width: 80%;
+            pointer-events: none;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
@@ -417,6 +434,20 @@
                             <option value="simple">Simple</option>
                             <option value="petscii">PETSCII</option>
                         </select>
+                    </div>
+
+                    <div class="setting-group" id="fontGroup" style="display:none">
+                        <label for="fontSelect">Font</label>
+                        <select id="fontSelect">
+                            <option value="">Auto</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="subtitle">
+                            <label for="subtitle">Subtitles</label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -485,6 +516,7 @@
         <div class="main-area">
             <div class="preview-area" id="previewArea">
                 <pre id="previewContent" class="preview-placeholder">Upload a video to begin</pre>
+                <div id="subtitleOverlay" class="subtitle-overlay" style="display: none;"></div>
             </div>
             
             <div class="controls-bar" id="playbackControls" style="display: none;">
@@ -500,6 +532,7 @@
     <script>
         let currentJobId = null;
         let frames = [];
+        let subtitleSegments = [];
         let currentFrameIndex = 0;
         let isPlaying = false;
         let isLooping = false;
@@ -536,6 +569,8 @@
             document.getElementById('invert').checked = preset.invert;
             document.getElementById('edge').checked = preset.edge;
             document.getElementById('edgeThresholdGroup').style.display = preset.edge ? 'flex' : 'none';
+            document.getElementById('fontGroup').style.display = 'none';
+            document.getElementById('fontSelect').innerHTML = '<option value="">Auto</option>';
             updateLivePreview();
         }
         
@@ -610,7 +645,32 @@
             document.getElementById('fpsValue').textContent = e.target.value;
         });
         
-        document.getElementById('charset').addEventListener('change', updateLivePreview);
+        document.getElementById('charset').addEventListener('change', async (e) => {
+            updateLivePreview();
+            const charset = e.target.value;
+            const fontGroup = document.getElementById('fontGroup');
+            const fontSelect = document.getElementById('fontSelect');
+            if (charset === 'petscii') {
+                try {
+                    const resp = await fetch('/api/fonts?charset=petscii');
+                    const data = await resp.json();
+                    fontSelect.innerHTML = '<option value="">Auto</option>';
+                    for (const name of data.fonts) {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.textContent = name;
+                        fontSelect.appendChild(opt);
+                    }
+                    fontGroup.style.display = data.fonts.length > 0 ? '' : 'none';
+                } catch (err) {
+                    console.error('Failed to fetch fonts:', err);
+                    fontGroup.style.display = 'none';
+                }
+            } else {
+                fontGroup.style.display = 'none';
+                fontSelect.innerHTML = '<option value="">Auto</option>';
+            }
+        });
         document.getElementById('color').addEventListener('change', updateLivePreview);
         document.getElementById('crt').addEventListener('change', updateLivePreview);
         document.getElementById('invert').addEventListener('change', updateLivePreview);
@@ -673,6 +733,8 @@
             formData.append('aspect_ratio', document.getElementById('aspectRatio').value);
             formData.append('charset', document.getElementById('charset').value);
             formData.append('crt', document.getElementById('crt').checked);
+            formData.append('subtitle', document.getElementById('subtitle').checked);
+            formData.append('font', document.getElementById('fontSelect').value);
             
             // Show upload progress
             document.getElementById('progressSection').classList.remove('hidden');
@@ -827,6 +889,7 @@
                 
                 frames = data.frames;
                 fps = data.fps;
+                subtitleSegments = data.subtitle_segments || [];
                 currentFrameIndex = 0;
                 
                 console.log('Loaded', frames.length, 'frames, starting playback');
@@ -905,13 +968,8 @@
             const previewEl = document.getElementById('previewContent');
             const frameContent = frames[index];
             
-            if (!frameContent || frameContent.trim() === '') {
-                console.warn('Frame', index, 'is empty');
-                previewEl.innerHTML = '<span class="preview-placeholder">Empty frame</span>';
-            } else {
-                previewEl.innerHTML = frameContent;
-                previewEl.classList.remove('preview-placeholder');
-            }
+            previewEl.innerHTML = frameContent || '';
+            previewEl.classList.remove('preview-placeholder');
             
             // Update scrubber
             const scrubber = document.getElementById('scrubber');
@@ -923,6 +981,27 @@
             const frameInfo = document.getElementById('frameInfo');
             if (frameInfo) {
                 frameInfo.textContent = `Frame ${index + 1} / ${frames.length}`;
+            }
+            
+            // Update subtitle overlay
+            const subtitleEl = document.getElementById('subtitleOverlay');
+            if (subtitleSegments.length > 0) {
+                const timeSec = index / fps;
+                let activeText = null;
+                for (const seg of subtitleSegments) {
+                    if (timeSec >= seg.start && timeSec < seg.end) {
+                        activeText = seg.text;
+                        break;
+                    }
+                }
+                if (activeText) {
+                    subtitleEl.textContent = activeText;
+                    subtitleEl.style.display = 'block';
+                } else {
+                    subtitleEl.style.display = 'none';
+                }
+            } else {
+                subtitleEl.style.display = 'none';
             }
         }
         

@@ -1,9 +1,12 @@
 """Terminal playback engine."""
 
+import os
 import signal
 import sys
 import time
 from typing import Optional
+
+from video2ascii.subtitle import get_subtitle_for_frame
 
 
 # ANSI escape codes
@@ -22,7 +25,13 @@ CRT_BG = "\033[48;2;5;5;5m"
 class TerminalPlayer:
     """Plays ASCII frames in the terminal."""
     
-    def __init__(self, frames: list[str], fps: int, speed: float = 1.0):
+    def __init__(
+        self,
+        frames: list[str],
+        fps: int,
+        speed: float = 1.0,
+        subtitle_segments: Optional[list[tuple[float, float, str]]] = None,
+    ):
         """
         Initialize player.
         
@@ -30,12 +39,14 @@ class TerminalPlayer:
             frames: List of ASCII art frame strings
             fps: Original frames per second
             speed: Playback speed multiplier
+            subtitle_segments: Parsed SRT segments for subtitle display
         """
         self.frames = frames
         self.fps = fps
         self.speed = speed
         self.frame_delay = 1.0 / (fps * speed)
         self.interrupted = False
+        self.subtitle_segments = subtitle_segments
         
         # Set up signal handler for clean exit
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -78,6 +89,41 @@ class TerminalPlayer:
         if crt:
             print(RESET, end="", flush=True)
     
+    def _draw_subtitle(self, frame_index: int, crt: bool, progress: bool):
+        """
+        Draw subtitle text pinned to the bottom of the terminal.
+
+        Places the subtitle on the second-to-last row when a progress bar
+        is shown, or on the last row otherwise.
+
+        Args:
+            frame_index: Current frame index (0-based).
+            crt: Use CRT green color.
+            progress: Whether the progress bar is also being drawn.
+        """
+        subtitle_text = get_subtitle_for_frame(
+            self.subtitle_segments, frame_index, self.fps,
+        )
+
+        # Row: second-to-last if progress bar present, otherwise last
+        row = "998" if progress else "999"
+        print(f"\033[{row};1H", end="", flush=True)
+        print(CLEAR_LINE, end="", flush=True)
+
+        if subtitle_text:
+            # Get terminal width for centering
+            try:
+                cols = os.get_terminal_size().columns
+            except OSError:
+                cols = 80
+            padding = max(0, (cols - len(subtitle_text)) // 2)
+
+            if crt:
+                print(CRT_GREEN, end="", flush=True)
+            print(" " * padding + subtitle_text, end="", flush=True)
+            if crt:
+                print(RESET, end="", flush=True)
+    
     def play(
         self,
         crt: bool = False,
@@ -117,6 +163,10 @@ class TerminalPlayer:
                     if crt:
                         print(RESET, end="", flush=True)
                     
+                    # Draw subtitle if available (pinned to bottom of terminal)
+                    if self.subtitle_segments:
+                        self._draw_subtitle(i, crt, progress)
+                    
                     # Draw progress if requested
                     if progress:
                         self.draw_progress(i + 1, len(self.frames), crt)
@@ -142,6 +192,7 @@ def play(
     crt: bool = False,
     loop: bool = False,
     progress: bool = False,
+    subtitle_segments: Optional[list[tuple[float, float, str]]] = None,
 ) -> None:
     """
     Play ASCII frames in terminal.
@@ -153,6 +204,7 @@ def play(
         crt: Enable CRT green phosphor mode
         loop: Loop playback forever
         progress: Show progress bar
+        subtitle_segments: Parsed SRT segments for subtitle display
     """
-    player = TerminalPlayer(frames, fps, speed)
+    player = TerminalPlayer(frames, fps, speed, subtitle_segments=subtitle_segments)
     player.play(crt=crt, loop=loop, progress=progress)
