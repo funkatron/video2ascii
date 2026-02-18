@@ -16,6 +16,9 @@ video2ascii your-video.mp4 --crt
 
 # Edge detection (sketch-like effect)
 video2ascii your-video.mp4 --edge --invert
+
+# Auto-generate subtitles from audio
+video2ascii your-video.mp4 --subtitle
 ```
 
 The tool extracts frames from the video, converts each to ASCII art using Pillow, and plays them back in sequence in your terminal.
@@ -39,14 +42,23 @@ Features:
 - Real-time conversion progress
 - Presets (Classic, CRT, Sketch, Minimal)
 - Live playback with scrubbing
+- Auto-generated subtitles
+- Font chooser for PETSCII charset
 - Export to .sh or .mp4
 
 ## Requirements
 
 **System dependencies:**
-- **ffmpeg** (for video frame extraction)
+- **ffmpeg** (for video frame extraction and video encoding)
   - macOS: `brew install ffmpeg`
   - Linux: `apt install ffmpeg` (or equivalent)
+
+**Optional system dependencies:**
+- **whisper-cli** (for auto-generated subtitles from audio)
+  - macOS: `brew install whisper-cpp`
+  - Requires a Whisper GGUF model (e.g. `ggml-large-v3-turbo.bin`)
+  - Set `VIDEO2ASCII_WHISPER_MODEL` env var to your model path, or place it in `~/.cache/whisper/`
+  - For accurate subtitle timing, also install the Silero VAD model (`ggml-silero-v5.1.2.bin`) in the same directory
 
 **Python dependencies:**
 - Python 3.10+
@@ -124,15 +136,18 @@ video2ascii input.mp4 --edge --invert --color
 # Combine CRT with loop and progress
 video2ascii input.mp4 --crt --loop --progress
 
-# Commodore 64 [PETSCII](https://en.wikipedia.org/wiki/PETSCII) style
+# Commodore 64 PETSCII style
 video2ascii input.mp4 --charset petscii --crt
+
+# Auto-generate subtitles from audio
+video2ascii input.mp4 --subtitle --color
 
 # Export as standalone playable file (no dependencies!)
 video2ascii input.mp4 --export movie.sh
 ./movie.sh --loop --crt
 
-# Export as MP4 video file (H.265/HEVC encoding) with [PETSCII](https://en.wikipedia.org/wiki/PETSCII)
-video2ascii input.mp4 --charset petscii --crt --export-mp4 ascii-video.mp4
+# Export as MP4 with subtitles and a specific font
+video2ascii input.mp4 --charset petscii --crt --subtitle --font PetMe128 --export-mp4 ascii-video.mp4
 
 # Export as ProRes 422 HQ (larger file size, suitable for video editing)
 video2ascii input.mp4 --color --charset braille --export-prores422 ascii-prores.mov
@@ -152,7 +167,9 @@ video2ascii input.mp4 --color --charset braille --export-prores422 ascii-prores.
 | `--invert` | Invert brightness and colors (dark mode friendly) | off |
 | `--edge` | Edge detection for sketch-like effect | off |
 | `--edge-threshold N` | Edge detection threshold (0.0-1.0) | 0.15 |
-| `--charset NAME` | Character set: classic, blocks, braille, dense, simple, [petscii](https://en.wikipedia.org/wiki/PETSCII) | classic |
+| `--charset NAME` | Character set: classic, blocks, braille, dense, simple, petscii | classic |
+| `--subtitle` | Auto-generate subtitles from audio (requires whisper-cli) | off |
+| `--font NAME_OR_PATH` | Font for MP4/ProRes export (e.g. PetMe128, /path/to/font.ttf) | auto |
 | `--aspect-ratio N` | Terminal character aspect ratio correction | 1.2 |
 | `--progress` | Show progress bar during playback | off |
 | `--export FILE` | Package as standalone playable script | - |
@@ -188,9 +205,44 @@ Character sets available:
 - **`dense`**: Many characters for fine gradients and detail
 - **`simple`**: Minimal character set (`" .oO0"`)
 - **`petscii`**: True Commodore 64 [PETSCII](https://en.wikipedia.org/wiki/PETSCII) graphics characters using Unicode 13.0+ Symbols for Legacy Computing block
-  - For Commodore 64 appearance, use [KreativeKorp Pet Me 64 fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal. These fonts render the PETSCII Unicode characters.
+  - For Commodore 64 appearance, use [KreativeKorp Pet Me fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal
+  - Variants: PetMe, PetMe64, PetMe128, PetMe2X, PetMe2Y, PetMe642Y, PetMe1282Y
 
 You can also provide a custom character string ordered from darkest to lightest.
+
+### Subtitles (`--subtitle`)
+
+Auto-generates subtitles from the video's audio track:
+
+- If the video already has an embedded subtitle stream (SRT/ASS/etc.), it is extracted and used directly
+- Otherwise, audio is transcribed locally using [whisper-cli](https://github.com/ggerganov/whisper.cpp) (whisper.cpp)
+- Voice Activity Detection (VAD) provides accurate start/end timestamps
+- Subtitles display at the bottom of the frame in terminal playback, in the web GUI, and burned into MP4 exports
+
+**Setup:**
+
+1. Install whisper-cli: `brew install whisper-cpp` (macOS) or build from source
+2. Download a Whisper GGUF model (e.g. `ggml-large-v3-turbo.bin`) to `~/.cache/whisper/`
+3. Optionally download the Silero VAD model (`ggml-silero-v5.1.2.bin`) to the same directory for precise timing
+
+**Environment variables:**
+
+| Variable | Description |
+|----------|-------------|
+| `VIDEO2ASCII_WHISPER_CLI_PATH` | Path to `whisper-cli` binary (auto-detected if on `$PATH`) |
+| `VIDEO2ASCII_WHISPER_MODEL` | Path to Whisper GGUF model file |
+| `VIDEO2ASCII_VAD_MODEL` | Path to Silero VAD GGUF model file |
+
+```bash
+# Terminal playback with subtitles
+video2ascii input.mp4 --subtitle --color
+
+# Export MP4 with subtitles burned in
+video2ascii input.mp4 --subtitle --color --export-mp4 output.mp4
+
+# Export standalone script (subtitles embedded)
+video2ascii input.mp4 --subtitle --export movie.sh
+```
 
 ### Export Modes
 
@@ -220,24 +272,35 @@ Use cases:
 #### MP4 Video (`--export-mp4 FILE`)
 
 Renders ASCII frames as images and creates an MP4 video file:
-- Renders ASCII art using system monospace fonts (automatically finds PetME64, Iosevka, Menlo, Courier, or DejaVu)
+- Renders ASCII art using system monospace fonts
 - Preserves color information (if `--color` was used)
 - Applies CRT green tint (if `--crt` was used)
+- Burns subtitles into the video (if `--subtitle` was used)
 - Creates MP4 file playable in any video player
-- When using `--charset petscii`, automatically prefers PetME64 font for Commodore 64 rendering (see [PETSCII](https://en.wikipedia.org/wiki/PETSCII))
 
 **Codec Options:**
 
 - `--export-mp4 FILE`: Uses H.265/HEVC encoding (default, better compression, smaller file size)
 - `--export-prores422 FILE`: Uses ProRes 422 HQ encoding (larger file size, suitable for video editing)
 
-**Font Support:**
-The MP4 exporter automatically searches for fonts in common locations:
-- **PetME64** (KreativeKorp): `~/Library/Fonts/`, `/Library/Fonts/` (macOS) or `~/.fonts/`, `/usr/share/fonts/` (Linux)
-- **Iosevka**: Same locations as PetME64
-- **VT323**: Retro terminal font
-- **IBM Plex Mono**: Monospace font
-- **System fonts**: Menlo, Courier, DejaVu Sans Mono, Liberation Mono
+**Font Selection:**
+
+The `--font` flag lets you choose a specific font for MP4/ProRes export. This is especially useful for PETSCII mode where multiple PetMe font variants are available.
+
+```bash
+# Use a specific PetMe variant
+video2ascii input.mp4 --charset petscii --font PetMe128 --export-mp4 output.mp4
+
+# Use an absolute path to any font
+video2ascii input.mp4 --font /path/to/MyFont.ttf --export-mp4 output.mp4
+```
+
+Without `--font`, fonts are auto-selected based on charset:
+- **petscii**: PetMe64 (or first available PetMe variant)
+- **braille**: Bold braille font preferred, then regular braille, then monospace
+- **everything else**: Iosevka, VT323, IBM Plex Mono, Menlo, DejaVu Sans Mono, etc.
+
+Subtitle burn-in uses a separate readable monospace font (Iosevka, IBM Plex Mono, Menlo, etc.).
 
 ```bash
 # Export as MP4 (H.265/HEVC - default)
@@ -246,11 +309,11 @@ video2ascii video.mp4 --charset petscii --crt --export-mp4 output.mp4
 # Export as ProRes 422 HQ
 video2ascii video.mp4 --color --charset braille --export-prores422 output-prores.mov
 
-# With color
-video2ascii video.mp4 --color --export-mp4 colorful-ascii.mp4
+# With subtitles
+video2ascii video.mp4 --color --subtitle --export-mp4 subtitled-ascii.mp4
 
-# [PETSCII](https://en.wikipedia.org/wiki/PETSCII) with PetME64 font (if installed)
-video2ascii video.mp4 --charset petscii --export-mp4 petscii-video.mp4
+# PETSCII with specific PetMe font
+video2ascii video.mp4 --charset petscii --font PetMe128 --export-mp4 petscii-video.mp4
 ```
 
 Use cases:
@@ -265,21 +328,25 @@ Use cases:
 video2ascii/
 ├── cli.py              # CLI entry point (argparse, --web flag)
 ├── converter.py        # Core: frame extraction (ffmpeg), ASCII conversion (Pillow), edge detection
-├── player.py           # Terminal playback engine (ANSI escape sequences)
+├── player.py           # Terminal playback engine (ANSI escape sequences, subtitle display)
 ├── exporter.py         # Standalone .sh script export (gzip+base64 compressed)
 ├── mp4_exporter.py     # MP4/ProRes video export (renders ASCII to images, encodes with ffmpeg)
+├── fonts.py            # Font discovery and resolution (resolve_font, list_available_fonts)
+├── subtitle.py         # Subtitle generation: embedded stream extraction, whisper-cli transcription, SRT parsing
 ├── web/
-│   ├── app.py          # FastAPI backend: upload, convert, SSE progress, export endpoints
+│   ├── app.py          # FastAPI backend: upload, convert, SSE progress, font list, export endpoints
 │   ├── renderer.py     # ANSI-to-HTML converter for web display
 │   ├── server.py       # Standalone web server entry point
 │   └── static/
-│       └── index.html  # Single-page frontend (vanilla HTML/CSS/JS)
+│       └── index.html  # Single-page frontend (vanilla HTML/CSS/JS, font chooser)
 tests/
 ├── test_cli.py         # CLI argument parsing and main function tests
 ├── test_converter.py   # Frame extraction, ASCII conversion, edge detection tests
 ├── test_exporter.py    # Shell script export tests
+├── test_fonts.py       # Font discovery and resolution tests
 ├── test_mp4_exporter.py# MP4/ProRes export tests
 ├── test_player.py      # Terminal player tests
+├── test_subtitle.py    # Subtitle generation, SRT parsing, whisper-cli integration tests
 ├── test_web_app.py     # FastAPI endpoint integration tests
 └── test_web_renderer.py# ANSI-to-HTML renderer tests
 ```
@@ -288,13 +355,15 @@ tests/
 
 1. **Frame Extraction**: Uses `ffmpeg` to extract frames at the specified FPS and scale them to the target width
 2. **ASCII Conversion**: Uses Pillow to convert each frame to ASCII art (parallelized across CPU cores). Maps pixel brightness to character density ramp: `" .:-=+*#%@"`
-3. **Playback**: Displays frames sequentially in the terminal using ANSI escape sequences for smooth animation
-4. **Web GUI**: FastAPI serves a single-page app; uploads go through multipart form, conversion runs in a thread pool, progress streams via Server-Sent Events (SSE), frames are rendered as colored HTML spans
+3. **Subtitle Generation** (optional): Extracts embedded subtitle streams via ffprobe, or transcribes audio locally via whisper-cli with VAD for accurate timing
+4. **Playback**: Displays frames sequentially in the terminal using ANSI escape sequences for smooth animation. Subtitles are displayed centered at the bottom of the frame.
+5. **Web GUI**: FastAPI serves a single-page app; uploads go through multipart form, conversion runs in a thread pool, progress streams via Server-Sent Events (SSE), frames are rendered as colored HTML spans
 
 ## Tips
 
 - **CRT Mode**: Works best in a terminal with a dark background. Retro fonts like "VT323" or "IBM Plex Mono" can enhance the appearance.
-- **PETSCII Mode**: Install and use the [KreativeKorp Pet Me 64 fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal. These fonts render the [PETSCII](https://en.wikipedia.org/wiki/PETSCII) Unicode characters (Unicode 13.0+ Symbols for Legacy Computing block).
+- **PETSCII Mode**: Install and use the [KreativeKorp Pet Me fonts](https://www.kreativekorp.com/software/fonts/c64/) in your terminal. Available variants: PetMe, PetMe64, PetMe128, PetMe2X, PetMe2Y, PetMe642Y, PetMe1282Y.
+- **Subtitles**: For best results, use a high-quality Whisper model (`ggml-large-v3-turbo.bin`). The Silero VAD model improves timestamp accuracy significantly.
 - **Width**: For CRT mode, 80 is classic. For modern displays, try 120-200 depending on your terminal size.
 - **FPS**: Higher FPS = smoother playback but more processing. 10-15 FPS works well for most content.
 - **Speed**: Use `--speed 0.5` for slow-mo, `--speed 2` for double-speed.

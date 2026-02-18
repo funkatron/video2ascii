@@ -22,6 +22,24 @@ This directory contains example exported ASCII movies created with `video2ascii 
 - `video2ascii-simple-color.mp4` - Simple charset with color
 - `video2ascii-petscii-color.mp4` - PETSCII charset with color
 
+### Subtitle Examples (Sintel Trailer)
+
+Shell scripts with auto-generated subtitles, one per charset:
+
+- `sintel-subtitle-classic.sh` - Classic charset
+- `sintel-subtitle-blocks.sh` - Unicode blocks
+- `sintel-subtitle-braille.sh` - Braille characters
+- `sintel-subtitle-dense.sh` - Dense charset
+- `sintel-subtitle-simple.sh` - Simple charset
+- `sintel-subtitle-petscii.sh` - PETSCII charset
+
+Subtitles are auto-generated from the audio via whisper-cli (whisper.cpp) with Voice Activity Detection (VAD) for accurate timing. The Sintel trailer dialogue:
+
+> "What brings you to the land of the gatekeepers?"
+> "I'm searching for someone."
+> "A dangerous quest for our lone hunter."
+> "I've been alone for as long as I can remember."
+
 ## Running Examples
 
 All exported scripts are self-contained and require only bash:
@@ -37,6 +55,10 @@ All exported scripts are self-contained and require only bash:
 # Try different character sets
 ./examples/not-ai-petscii.sh --crt
 ./examples/not-ai-blocks.sh --loop
+
+# Play subtitle demos
+./examples/sintel-subtitle-classic.sh
+./examples/sintel-subtitle-petscii.sh --loop --progress
 ```
 
 ## Creating Your Own
@@ -48,30 +70,18 @@ Export your own ASCII movies:
 video2ascii input.mp4 --export examples/my-movie.sh
 video2ascii input.mp4 --charset petscii --crt --export examples/retro-movie.sh
 
+# With subtitles
+video2ascii input.mp4 --subtitle --export examples/subtitled-movie.sh
+
 # MP4 video (color rendering)
 video2ascii input.mp4 --color --charset classic --export-mp4 examples/my-movie.mp4
 video2ascii input.mp4 --color --charset braille --export-mp4 examples/my-braille-movie.mp4
-```
 
-### Subtitle Examples (Sintel Trailer)
+# MP4 with subtitles burned in
+video2ascii input.mp4 --color --subtitle --export-mp4 examples/subtitled.mp4
 
-- `sintel-subtitle.sh` - Classic charset with auto-generated subtitles (terminal playback)
-- `sintel-subtitle-color.mp4` - Classic charset with color and subtitles burned in
-
-Subtitles are auto-generated from the audio via whisper-cli (whisper.cpp). The Sintel trailer dialogue:
-
-> "What brings you to the land of the gatekeepers?"
-> "I'm searching for someone."
-> "A dangerous quest for our lone hunter."
-> "I've been alone for as long as I can remember."
-
-```bash
-# Play with subtitles in terminal
-./examples/sintel-subtitle.sh
-./examples/sintel-subtitle.sh --loop --progress
-
-# The MP4 has subtitles burned in -- play with any video player
-open examples/sintel-subtitle-color.mp4
+# MP4 with specific font (useful for PETSCII)
+video2ascii input.mp4 --charset petscii --font PetMe128 --export-mp4 examples/petscii.mp4
 ```
 
 ## Web GUI
@@ -86,4 +96,4 @@ uv pip install -e ".[web]"
 video2ascii --web
 ```
 
-The web GUI supports drag-and-drop upload, presets, live playback, and export to .sh or .mp4.
+The web GUI supports drag-and-drop upload, presets, live playback, subtitle generation, font selection for PETSCII, and export to .sh or .mp4.
