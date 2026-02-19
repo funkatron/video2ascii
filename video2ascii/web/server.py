@@ -13,9 +13,8 @@ except ImportError:
     sys.exit(1)
 
 
-def main():
+def main(port: int = 9999):
     """Start the web server."""
-    port = 8080
     url = f"http://localhost:{port}"
 
     # Open browser after a short delay

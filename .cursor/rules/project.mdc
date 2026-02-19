@@ -74,7 +74,7 @@ uv run python -m video2ascii input.mp4 --subtitle
 
 # Web GUI
 uv run python -m video2ascii.cli --web
-# Opens http://localhost:8080
+# Opens http://localhost:9999 (default port, override with --port)
 ```
 
 ## Important Technical Details

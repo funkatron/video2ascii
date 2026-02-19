@@ -49,6 +49,13 @@ Examples:
     )
 
     parser.add_argument(
+        "--port",
+        type=int,
+        default=9999,
+        help="Port for web GUI server (default: 9999, used with --web)",
+    )
+
+    parser.add_argument(
         "--width",
         type=int,
         default=160,
@@ -236,7 +243,7 @@ def main():
             import webbrowser
             import threading
 
-            port = 8080
+            port = args.port
             url = f"http://localhost:{port}"
 
             # Open browser after a short delay
