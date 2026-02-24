@@ -34,6 +34,14 @@ Set secret:
 fly secrets set VIDEO2ASCII_EXPORT_TOKEN=replace_me
 ```
 
+Recommended hardening envs:
+
+```bash
+fly secrets set VIDEO2ASCII_MAX_REQUEST_BYTES=20000000
+fly secrets set VIDEO2ASCII_MAX_CHARS_PER_FRAME=20000
+fly secrets set VIDEO2ASCII_RATE_LIMIT_PER_MINUTE=20
+```
+
 Expose endpoint(s):
 
 - `POST /api/export/mp4`

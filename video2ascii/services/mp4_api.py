@@ -1,13 +1,15 @@
 """HTTP API for paid video exports (WebM/MP4)."""
 
 import os
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+from starlette.background import BackgroundTask
 
 from video2ascii.mp4_exporter import export_mp4
 
@@ -15,7 +17,7 @@ app = FastAPI(title="video2ascii Export API")
 
 
 class ExportRequest(BaseModel):
-    frames: list[str] = Field(min_length=1)
+    frames: list[str] = Field(min_length=1, max_length=1200)
     fps: int = Field(ge=1, le=30)
     width: int = Field(default=120, ge=20, le=320)
     color: bool = False
@@ -23,12 +25,27 @@ class ExportRequest(BaseModel):
     charset: str = "classic"
     font: Optional[str] = None
 
+    @model_validator(mode="after")
+    def validate_frame_sizes(self) -> "ExportRequest":
+        max_chars = int(os.environ.get("VIDEO2ASCII_MAX_CHARS_PER_FRAME", "20000"))
+        for frame in self.frames:
+            if len(frame) > max_chars:
+                raise ValueError(f"Frame exceeds max chars ({max_chars})")
+        return self
+
+
+_RATE_WINDOW_SECONDS = 60
+_RATE_LIMIT = int(os.environ.get("VIDEO2ASCII_RATE_LIMIT_PER_MINUTE", "20"))
+_RATE_STATE: dict[str, list[float]] = {}
+
 
 def _check_token(auth_header: Optional[str]) -> None:
     expected = os.environ.get("VIDEO2ASCII_EXPORT_TOKEN", "")
-    if not expected:
-        # Allow disabled auth in development.
+    allow_unauth = os.environ.get("VIDEO2ASCII_ALLOW_UNAUTH", "").lower() == "true"
+    if not expected and allow_unauth:
         return
+    if not expected and not allow_unauth:
+        raise HTTPException(status_code=500, detail="Server auth token is not configured")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing bearer token")
     token = auth_header.replace("Bearer ", "", 1).strip()
@@ -38,6 +55,28 @@ def _check_token(auth_header: Optional[str]) -> None:
 
 def _safe_target_width(width_chars: int) -> int:
     return min(1920, max(1280, width_chars * 16))
+
+
+def _check_rate_limit(request: Request) -> None:
+    import time
+
+    if _RATE_LIMIT <= 0:
+        return
+    now = time.time()
+    client_ip = request.client.host if request.client else "unknown"
+    hits = _RATE_STATE.get(client_ip, [])
+    hits = [t for t in hits if now - t < _RATE_WINDOW_SECONDS]
+    if len(hits) >= _RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    hits.append(now)
+    _RATE_STATE[client_ip] = hits
+
+
+def _check_content_length(request: Request) -> None:
+    limit_bytes = int(os.environ.get("VIDEO2ASCII_MAX_REQUEST_BYTES", "20000000"))
+    raw = request.headers.get("content-length")
+    if raw and raw.isdigit() and int(raw) > limit_bytes:
+        raise HTTPException(status_code=413, detail="Request too large")
 
 
 def _run_export(req: ExportRequest, suffix: str, codec: str) -> Path:
@@ -64,14 +103,38 @@ def healthz() -> dict[str, str]:
 
 
 @app.post("/api/export/webm")
-def export_webm(req: ExportRequest, authorization: Optional[str] = Header(default=None)) -> FileResponse:
+def export_webm(
+    req: ExportRequest,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+) -> FileResponse:
+    _check_content_length(request)
+    _check_rate_limit(request)
     _check_token(authorization)
     out_path = _run_export(req, ".webm", "vp9")
-    return FileResponse(str(out_path), media_type="video/webm", filename="video2ascii.webm")
+    cleanup = BackgroundTask(shutil.rmtree, str(out_path.parent), True)
+    return FileResponse(
+        str(out_path),
+        media_type="video/webm",
+        filename="video2ascii.webm",
+        background=cleanup,
+    )
 
 
 @app.post("/api/export/mp4")
-def export_mp4_route(req: ExportRequest, authorization: Optional[str] = Header(default=None)) -> FileResponse:
+def export_mp4_route(
+    req: ExportRequest,
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+) -> FileResponse:
+    _check_content_length(request)
+    _check_rate_limit(request)
     _check_token(authorization)
     out_path = _run_export(req, ".mp4", "h265")
-    return FileResponse(str(out_path), media_type="video/mp4", filename="video2ascii.mp4")
+    cleanup = BackgroundTask(shutil.rmtree, str(out_path.parent), True)
+    return FileResponse(
+        str(out_path),
+        media_type="video/mp4",
+        filename="video2ascii.mp4",
+        background=cleanup,
+    )

@@ -22,7 +22,7 @@ Request body:
 }
 ```
 
-Set `VIDEO2ASCII_EXPORT_TOKEN` to require bearer auth.
+Set `VIDEO2ASCII_EXPORT_TOKEN` to require bearer auth (recommended for all non-local environments).
 
 ## Local run
 
@@ -36,6 +36,12 @@ uv run uvicorn video2ascii.services.mp4_api:app --reload --port 8080
 docker build -f deploy/mp4-server/Dockerfile -t video2ascii-mp4-export .
 docker run --rm -p 8080:8080 -e VIDEO2ASCII_EXPORT_TOKEN=dev-token video2ascii-mp4-export
 ```
+
+Optional limits:
+
+- `VIDEO2ASCII_MAX_REQUEST_BYTES` (default: `20000000`)
+- `VIDEO2ASCII_MAX_CHARS_PER_FRAME` (default: `20000`)
+- `VIDEO2ASCII_RATE_LIMIT_PER_MINUTE` (default: `20`)
 
 ## Fly.io
 
