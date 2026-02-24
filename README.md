@@ -47,7 +47,7 @@ Features:
 - Live playback with scrubbing
 - Auto-generated subtitles
 - Font chooser for PETSCII charset
-- Export to .sh or .mp4
+- Export to .sh, .webm, or .mp4
 
 ## Requirements
 
@@ -157,6 +157,9 @@ video2ascii input.mp4 --export movie.sh
 # Export as MP4 with subtitles and a specific font
 video2ascii input.mp4 --preset c64 --subtitle --font PetMe128 --export-mp4 ascii-video.mp4
 
+# Export as WebM (VP9)
+video2ascii input.mp4 --color --export-webm ascii-video.webm
+
 # Export as ProRes 422 HQ (larger file size, suitable for video editing)
 video2ascii input.mp4 --color --charset braille --export-prores422 ascii-prores.mov
 ```
@@ -182,6 +185,7 @@ video2ascii input.mp4 --color --charset braille --export-prores422 ascii-prores.
 | `--aspect-ratio N` | Terminal character aspect ratio correction | 1.2 |
 | `--progress` | Show progress bar during playback | off |
 | `--export FILE` | Package as standalone playable script | - |
+| `--export-webm FILE` | Export ASCII frames as WebM video file (VP9 encoding) | - |
 | `--export-mp4 FILE` | Export ASCII frames as MP4 video file (H.265/HEVC encoding) | - |
 | `--export-prores422 FILE` | Export ASCII frames as video file using ProRes 422 HQ codec | - |
 | `--no-cache` | Delete temp files after playback | keep |
@@ -348,6 +352,35 @@ Use cases:
 - Embedding in websites
 - Creating demos or presentations
 - Archiving ASCII art animations
+
+#### WebM Video (`--export-webm FILE`)
+
+Renders ASCII frames and encodes a WebM video with VP9.
+
+- Good compatibility across modern browsers and web platforms
+- Smaller deployment cost profile than always-on MP4 pipelines
+- Keeps export behavior aligned between backend and public deployment targets
+
+```bash
+video2ascii input.mp4 --charset classic --export-webm output.webm
+```
+
+### Public Deployment (Client-Side + Paid Tier)
+
+An additive public deployment entrypoint is available at:
+
+- `video2ascii/web/static/public.html`
+- Local route when using `--web`: `http://localhost:9999/public`
+
+The public page runs conversion client-side by default and can be configured with paid APIs.
+
+- Free: local conversion, playback, `.sh` export, `.webm` export
+- Paid: API-backed auto transcription and MP4 export
+
+Deployment scaffolding:
+
+- Cloudflare Workers: `deploy/workers/`
+- MP4/WebM export API + Fly.io Docker: `deploy/mp4-server/`
 
 ## Architecture
 
