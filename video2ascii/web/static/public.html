@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>video2ascii Public</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Helvetica Neue", HelveticaNeue, "TeX Gyre Heros", TeXGyreHeros, FreeSans, "Nimbus Sans L", "Liberation Sans", Arimo, Helvetica, Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            height: 100vh;
+        }
+        .sidebar {
+            background: #fff;
+            color: #000;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 14px;
+        }
+        .privacy-note {
+            margin-bottom: 16px;
+            font-size: 0.7rem;
+            line-height: 1.5;
+            color: rgba(0, 0, 0, 0.72);
+        }
+        .settings-section { margin-bottom: 16px; }
+        .settings-section h2 {
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 8px;
+        }
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .setting-group label {
+            font-size: 0.68rem;
+            color: #222;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .setting-group input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: #bbb;
+            accent-color: #000;
+        }
+        .setting-group input[type="number"],
+        .setting-group input[type="text"],
+        .setting-group select {
+            background: #fff;
+            border: 1px solid #999;
+            color: #000;
+            padding: 6px 8px;
+            font-size: 0.75rem;
+            font-family: inherit;
+            width: 100%;
+        }
+        .setting-group input:focus, .setting-group select:focus {
+            outline: none;
+            border-color: #000;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            accent-color: #000;
+        }
+        .checkbox-group label {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 500;
+            color: #222;
+        }
+        .file-input-wrap {
+            border: 1px dashed #999;
+            background: rgba(0, 0, 0, 0.02);
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .file-input-wrap input { display: none; }
+        .file-input-wrap p {
+            font-size: 0.7rem;
+            color: rgba(0, 0, 0, 0.75);
+        }
+        .file-info {
+            margin-top: 6px;
+            font-size: 0.68rem;
+            color: rgba(0, 0, 0, 0.65);
+            word-break: break-word;
+        }
+        button {
+            background: #000;
+            color: #fff;
+            border: 1px solid #000;
+            padding: 9px 14px;
+            font-size: 0.66rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 6px;
+        }
+        button:hover:not(:disabled) {
+            background: #fff;
+            color: #000;
+        }
+        button:disabled {
+            background: #ccc;
+            border-color: #ccc;
+            color: #666;
+            cursor: not-allowed;
+        }
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .main-area {
+            display: flex;
+            flex-direction: column;
+            background: #000;
+            overflow: hidden;
+        }
+        .preview-area {
+            flex: 1;
+            background: #000;
+            padding: 36px;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .preview-area pre {
+            margin: 0;
+            font-size: 10px;
+            line-height: 1.1;
+            white-space: pre;
+            color: #fff;
+            font-family: "Courier New", "Monaco", "Menlo", monospace;
+            text-align: center;
+        }
+        .preview-placeholder {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.875rem;
+            text-align: center;
+            font-family: inherit;
+        }
+        .subtitle-overlay {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.7rem;
+            font-family: "Courier New", "Monaco", "Menlo", monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            text-align: center;
+            max-width: 80%;
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+        }
+        .controls-bar {
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .controls-bar button {
+            width: auto;
+            margin: 0;
+            padding: 6px 12px;
+        }
+        .controls-bar input[type="range"] {
+            flex: 1;
+            min-width: 180px;
+            height: 4px;
+            accent-color: #fff;
+        }
+        .controls-bar span {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.8);
+            min-width: 100px;
+        }
+        .status {
+            margin-top: 8px;
+            font-size: 0.7rem;
+            color: #111;
+            min-height: 1rem;
+            white-space: pre-wrap;
+        }
+        .error {
+            margin-top: 8px;
+            background: rgba(255, 0, 0, 0.08);
+            border: 1px solid rgba(255, 0, 0, 0.25);
+            color: #6b0000;
+            padding: 8px;
+            font-size: 0.7rem;
+            display: none;
+        }
+        .paid-note {
+            margin-top: 6px;
+            font-size: 0.65rem;
+            color: rgba(0, 0, 0, 0.7);
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="sidebar">
+        <h1>video2ascii Public</h1>
+        <p class="privacy-note">Your video never leaves your browser for local conversion. Paid features use configured backend APIs.</p>
+
+        <div class="settings-section">
+            <h2>Input</h2>
+            <label class="file-input-wrap" for="videoInput">
+                <p>Select video</p>
+                <input id="videoInput" type="file" accept="video/*">
+                <div id="videoInfo" class="file-info"></div>
+            </label>
+        </div>
+
+        <div class="settings-section">
+            <h2>Basic</h2>
+            <div class="setting-group">
+                <label for="width">Width: <span id="widthValue">120</span></label>
+                <input id="width" type="range" min="20" max="320" value="120">
+            </div>
+            <div class="setting-group">
+                <label for="fps">FPS: <span id="fpsValue">12</span></label>
+                <input id="fps" type="range" min="1" max="30" value="12">
+            </div>
+            <div class="setting-group">
+                <label for="charset">Character Set</label>
+                <select id="charset">
+                    <option value="classic">Classic</option>
+                    <option value="blocks">Blocks</option>
+                    <option value="braille">Braille</option>
+                    <option value="dense">Dense</option>
+                    <option value="simple">Simple</option>
+                    <option value="petscii">PETSCII</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h2>Advanced</h2>
+            <div class="setting-group">
+                <label for="aspectRatio">Aspect Ratio</label>
+                <input id="aspectRatio" type="number" min="0.5" max="2.0" step="0.1" value="1.2">
+            </div>
+            <div class="checkbox-group"><input id="color" type="checkbox"><label for="color">Color</label></div>
+            <div class="checkbox-group"><input id="crt" type="checkbox"><label for="crt">CRT Mode</label></div>
+            <div class="checkbox-group"><input id="invert" type="checkbox"><label for="invert">Invert</label></div>
+            <div class="checkbox-group"><input id="edge" type="checkbox"><label for="edge">Edge Detection</label></div>
+            <div class="setting-group">
+                <label for="edgeThreshold">Edge Threshold: <span id="edgeThresholdValue">0.15</span></label>
+                <input id="edgeThreshold" type="range" min="0" max="1" step="0.01" value="0.15">
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h2>Actions</h2>
+            <button id="convertBtn" disabled>Convert</button>
+            <div class="button-row">
+                <button id="exportShBtn" disabled>.sh</button>
+                <button id="exportWebmBtn" disabled>.webm</button>
+            </div>
+            <button id="exportMp4Btn" disabled>MP4 (Paid)</button>
+        </div>
+
+        <div class="settings-section">
+            <h2>Paid Tier</h2>
+            <div class="setting-group">
+                <label for="apiBaseUrl">API Base URL</label>
+                <input id="apiBaseUrl" type="text" placeholder="https://api.example.com">
+            </div>
+            <button id="unlockBtn">Unlock Paid Features</button>
+            <button id="transcribeBtn" disabled>Auto Subtitle (Paid)</button>
+            <p class="paid-note">Requires Stripe + Whisper backend setup. Tokens are stored locally in your browser.</p>
+        </div>
+
+        <div id="status" class="status"></div>
+        <div id="error" class="error"></div>
+    </div>
+
+    <div class="main-area">
+        <div class="preview-area">
+            <pre id="previewContent" class="preview-placeholder">Select a video, then convert</pre>
+            <div id="subtitleOverlay" class="subtitle-overlay"></div>
+        </div>
+        <div class="controls-bar">
+            <button id="playBtn" disabled>Play</button>
+            <button id="pauseBtn" disabled>Pause</button>
+            <button id="loopBtn" disabled>Loop</button>
+            <input id="scrubber" type="range" min="0" max="0" value="0" disabled>
+            <span id="frameInfo">Frame 0 / 0</span>
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    const CHARSETS = {
+        classic: " .:-=+*#%@",
+        blocks: " ░▒▓█",
+        braille: "⠀⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏⠐⠑⠒⠓⠔⠕⠖⠗⠘⠙⠚⠛⠜⠝⠞⠟⠠⠡⠢⠣⠤⠥⠦⠧⠨⠩⠪⠫⠬⠭⠮⠯⠰⠱⠲⠳⠴⠵⠶⠷⠸⠹⠺⠻⠼⠽⠾⠿",
+        dense: "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. ",
+        simple: " .oO0",
+        petscii: " ░▒▓█▌▐▀▄■□▪▫◆◇○●"
+    };
+
+    const el = {
+        videoInput: document.getElementById("videoInput"),
+        videoInfo: document.getElementById("videoInfo"),
+        width: document.getElementById("width"),
+        widthValue: document.getElementById("widthValue"),
+        fps: document.getElementById("fps"),
+        fpsValue: document.getElementById("fpsValue"),
+        charset: document.getElementById("charset"),
+        aspectRatio: document.getElementById("aspectRatio"),
+        color: document.getElementById("color"),
+        crt: document.getElementById("crt"),
+        invert: document.getElementById("invert"),
+        edge: document.getElementById("edge"),
+        edgeThreshold: document.getElementById("edgeThreshold"),
+        edgeThresholdValue: document.getElementById("edgeThresholdValue"),
+        convertBtn: document.getElementById("convertBtn"),
+        exportShBtn: document.getElementById("exportShBtn"),
+        exportWebmBtn: document.getElementById("exportWebmBtn"),
+        exportMp4Btn: document.getElementById("exportMp4Btn"),
+        unlockBtn: document.getElementById("unlockBtn"),
+        transcribeBtn: document.getElementById("transcribeBtn"),
+        apiBaseUrl: document.getElementById("apiBaseUrl"),
+        status: document.getElementById("status"),
+        error: document.getElementById("error"),
+        preview: document.getElementById("previewContent"),
+        subtitleOverlay: document.getElementById("subtitleOverlay"),
+        playBtn: document.getElementById("playBtn"),
+        pauseBtn: document.getElementById("pauseBtn"),
+        loopBtn: document.getElementById("loopBtn"),
+        scrubber: document.getElementById("scrubber"),
+        frameInfo: document.getElementById("frameInfo")
+    };
+
+    const state = {
+        framesHtml: [],
+        framesRaw: [],
+        subtitleSegments: [],
+        currentFrame: 0,
+        fps: 12,
+        loop: false,
+        timer: null,
+        token: localStorage.getItem("video2ascii_paid_token") || "",
+        videoFile: null
+    };
+
+    function setStatus(message) { el.status.textContent = message; }
+    function setError(message) { el.error.textContent = message; el.error.style.display = message ? "block" : "none"; }
+    function clearError() { setError(""); }
+
+    function getSettings() {
+        return {
+            width: parseInt(el.width.value, 10),
+            fps: parseInt(el.fps.value, 10),
+            charset: el.charset.value,
+            aspectRatio: parseFloat(el.aspectRatio.value),
+            color: el.color.checked,
+            crt: el.crt.checked,
+            invert: el.invert.checked,
+            edge: el.edge.checked,
+            edgeThreshold: parseFloat(el.edgeThreshold.value)
+        };
+    }
+
+    function updatePaidButtons() {
+        const paid = Boolean(state.token);
+        el.transcribeBtn.disabled = !paid || !state.videoFile;
+        el.exportMp4Btn.disabled = !paid || state.framesRaw.length === 0;
+    }
+
+    function escapeHtml(text) {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function applyCrtTint(r, g, b) {
+        return {
+            r: Math.min(255, Math.floor((r * 0.2) + (51 * 0.8))),
+            g: Math.min(255, Math.floor((g * 0.2) + (255 * 0.8))),
+            b: Math.min(255, Math.floor((b * 0.2) + (51 * 0.8)))
+        };
+    }
+
+    function grayscaleFromImageData(imageData) {
+        const out = new Float32Array(imageData.width * imageData.height);
+        const src = imageData.data;
+        for (let i = 0, px = 0; i < src.length; i += 4, px += 1) {
+            out[px] = (src[i] + src[i + 1] + src[i + 2]) / 3;
+        }
+        return out;
+    }
+
+    function convolveGray(input, width, height, kernel, kernelSize, divisor = 1) {
+        const half = Math.floor(kernelSize / 2);
+        const out = new Float32Array(width * height);
+        for (let y = 0; y < height; y += 1) {
+            for (let x = 0; x < width; x += 1) {
+                let sum = 0;
+                for (let ky = 0; ky < kernelSize; ky += 1) {
+                    for (let kx = 0; kx < kernelSize; kx += 1) {
+                        const ix = Math.min(width - 1, Math.max(0, x + kx - half));
+                        const iy = Math.min(height - 1, Math.max(0, y + ky - half));
+                        sum += input[iy * width + ix] * kernel[ky * kernelSize + kx];
+                    }
+                }
+                out[y * width + x] = sum / divisor;
+            }
+        }
+        return out;
+    }
+
+    function detectEdges(imageData, settings) {
+        const width = imageData.width;
+        const height = imageData.height;
+        const gray = grayscaleFromImageData(imageData);
+        const blurKernel = [1, 2, 1, 2, 4, 2, 1, 2, 1];
+        const blurred = convolveGray(gray, width, height, blurKernel, 3, 16);
+        const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+        const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+        const gx = convolveGray(blurred, width, height, sobelX, 3, 1);
+        const gy = convolveGray(blurred, width, height, sobelY, 3, 1);
+        const edge = new Float32Array(width * height);
+        const thresholdValue = settings.edgeThreshold * 255;
+
+        for (let i = 0; i < edge.length; i += 1) {
+            const magnitude = Math.min(255, Math.sqrt(gx[i] * gx[i] + gy[i] * gy[i]) * 0.6);
+            if (magnitude < thresholdValue) edge[i] = 0;
+            else edge[i] = Math.min(255, magnitude * 1.3);
+        }
+        return edge;
+    }
+
+    function frameToAscii(imageData, settings) {
+        let chars = CHARSETS[settings.charset] || settings.charset;
+        if (!chars || chars.length < 2) chars = CHARSETS.classic;
+        const width = imageData.width;
+        const height = imageData.height;
+        const src = imageData.data;
+        const edgeMap = settings.edge ? detectEdges(imageData, settings) : null;
+
+        if (settings.invert && !settings.color) chars = chars.split("").reverse().join("");
+        const len = chars.length - 1;
+        const lines = [];
+        const htmlLines = [];
+
+        for (let y = 0; y < height; y += 1) {
+            let rawLine = "";
+            let htmlLine = "";
+            for (let x = 0; x < width; x += 1) {
+                const idx = (y * width + x) * 4;
+                let r = src[idx], g = src[idx + 1], b = src[idx + 2];
+
+                if (settings.invert && settings.color) {
+                    r = 255 - r; g = 255 - g; b = 255 - b;
+                }
+                if (edgeMap) {
+                    const strength = edgeMap[y * width + x] / 255;
+                    r = Math.floor(r * strength);
+                    g = Math.floor(g * strength);
+                    b = Math.floor(b * strength);
+                }
+
+                const brightness = (r + g + b) / 3;
+                const charIdx = Math.floor((brightness / 255) * len);
+                const ch = chars[Math.max(0, Math.min(len, charIdx))];
+                rawLine += ch;
+
+                if (settings.color) {
+                    let outR = r, outG = g, outB = b;
+                    if (settings.crt) {
+                        const tinted = applyCrtTint(outR, outG, outB);
+                        outR = tinted.r; outG = tinted.g; outB = tinted.b;
+                    }
+                    htmlLine += `<span style="color: rgb(${outR}, ${outG}, ${outB})">${escapeHtml(ch)}</span>`;
+                } else {
+                    htmlLine += escapeHtml(ch);
+                }
+            }
+            lines.push(rawLine);
+            htmlLines.push(htmlLine);
+        }
+
+        return { raw: lines.join("\n"), html: htmlLines.join("\n") };
+    }
+
+    function readSrt(text) {
+        const segments = [];
+        const blocks = text.replace(/\r/g, "").trim().split("\n\n");
+        for (const block of blocks) {
+            const lines = block.split("\n").filter(Boolean);
+            if (lines.length < 2) continue;
+            const timing = lines[1].includes("-->") ? lines[1] : lines[0];
+            const textLines = lines[1].includes("-->") ? lines.slice(2) : lines.slice(1);
+            const match = timing.match(/(\d+:\d+:\d+,\d+)\s+-->\s+(\d+:\d+:\d+,\d+)/);
+            if (!match) continue;
+            segments.push({
+                start: srtTsToSeconds(match[1]),
+                end: srtTsToSeconds(match[2]),
+                text: textLines.join(" ").trim()
+            });
+        }
+        return segments;
+    }
+
+    function srtTsToSeconds(value) {
+        const [hms, ms] = value.split(",");
+        const [h, m, s] = hms.split(":").map(Number);
+        return (h * 3600) + (m * 60) + s + (Number(ms) / 1000);
+    }
+
+    async function loadVideoMetadata(file) {
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.muted = true;
+        video.playsInline = true;
+        const url = URL.createObjectURL(file);
+        video.src = url;
+        await new Promise((resolve, reject) => {
+            video.onloadedmetadata = resolve;
+            video.onerror = () => reject(new Error("Failed to read video metadata"));
+        });
+        return { video, url };
+    }
+
+    async function seekVideo(video, seconds) {
+        await new Promise((resolve, reject) => {
+            const onSeek = () => {
+                video.removeEventListener("seeked", onSeek);
+                resolve();
+            };
+            const onErr = () => {
+                video.removeEventListener("error", onErr);
+                reject(new Error("Video seek failed"));
+            };
+            video.addEventListener("seeked", onSeek);
+            video.addEventListener("error", onErr, { once: true });
+            video.currentTime = seconds;
+        });
+    }
+
+    async function convertVideoToAscii() {
+        if (!state.videoFile) return;
+        clearError();
+        const settings = getSettings();
+        state.fps = settings.fps;
+        setStatus("Reading video...");
+        el.convertBtn.disabled = true;
+
+        try {
+            const { video, url } = await loadVideoMetadata(state.videoFile);
+            const totalFrames = Math.max(1, Math.floor(video.duration * settings.fps));
+            const targetHeight = Math.max(1, Math.floor(video.videoHeight * settings.aspectRatio * settings.width / video.videoWidth));
+            const canvas = document.createElement("canvas");
+            canvas.width = settings.width;
+            canvas.height = targetHeight;
+            const ctx = canvas.getContext("2d", { willReadFrequently: true });
+            if (!ctx) throw new Error("Canvas context unavailable");
+
+            const htmlFrames = [];
+            const rawFrames = [];
+
+            for (let i = 0; i < totalFrames; i += 1) {
+                const t = Math.min(video.duration - 0.001, i / settings.fps);
+                await seekVideo(video, t);
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const ascii = frameToAscii(imageData, settings);
+                htmlFrames.push(ascii.html);
+                rawFrames.push(ascii.raw);
+                if ((i + 1) % 3 === 0 || i + 1 === totalFrames) {
+                    setStatus(`Converting frame ${i + 1}/${totalFrames}`);
+                    await new Promise((r) => setTimeout(r, 0));
+                }
+            }
+
+            URL.revokeObjectURL(url);
+            state.framesHtml = htmlFrames;
+            state.framesRaw = rawFrames;
+            state.currentFrame = 0;
+            renderFrame(0);
+            el.scrubber.max = Math.max(0, htmlFrames.length - 1);
+            el.scrubber.value = 0;
+            el.scrubber.disabled = false;
+            el.playBtn.disabled = false;
+            el.pauseBtn.disabled = false;
+            el.loopBtn.disabled = false;
+            el.exportShBtn.disabled = false;
+            el.exportWebmBtn.disabled = false;
+            updatePaidButtons();
+            setStatus(`Complete. ${htmlFrames.length} frames ready.`);
+        } catch (error) {
+            setError(error.message);
+            setStatus("Conversion failed.");
+        } finally {
+            el.convertBtn.disabled = false;
+        }
+    }
+
+    function subtitleAt(seconds) {
+        for (const seg of state.subtitleSegments) {
+            if (seconds >= seg.start && seconds < seg.end) return seg.text;
+        }
+        return "";
+    }
+
+    function renderFrame(index) {
+        if (!state.framesHtml.length) return;
+        const safeIndex = Math.max(0, Math.min(state.framesHtml.length - 1, index));
+        state.currentFrame = safeIndex;
+        el.preview.innerHTML = state.framesHtml[safeIndex];
+        el.preview.classList.remove("preview-placeholder");
+        el.frameInfo.textContent = `Frame ${safeIndex + 1} / ${state.framesHtml.length}`;
+        el.scrubber.value = String(safeIndex);
+
+        const text = subtitleAt(safeIndex / state.fps);
+        if (text) {
+            el.subtitleOverlay.textContent = text;
+            el.subtitleOverlay.style.display = "block";
+        } else {
+            el.subtitleOverlay.style.display = "none";
+        }
+    }
+
+    function pausePlayback() {
+        if (state.timer) clearInterval(state.timer);
+        state.timer = null;
+    }
+
+    function playPlayback() {
+        if (!state.framesHtml.length) return;
+        pausePlayback();
+        const delay = Math.max(1, Math.floor(1000 / state.fps));
+        state.timer = setInterval(() => {
+            let next = state.currentFrame + 1;
+            if (next >= state.framesHtml.length) {
+                if (state.loop) next = 0;
+                else return pausePlayback();
+            }
+            renderFrame(next);
+        }, delay);
+    }
+
+    async function exportSh() {
+        if (!state.framesRaw.length) return;
+        clearError();
+        const fps = state.fps;
+        const crt = getSettings().crt;
+
+        let payload = JSON.stringify({ frames: state.framesRaw, fps, crt });
+        if ("CompressionStream" in window) {
+            const cs = new CompressionStream("gzip");
+            const writer = cs.writable.getWriter();
+            writer.write(new TextEncoder().encode(payload));
+            writer.close();
+            const compressed = await new Response(cs.readable).arrayBuffer();
+            payload = btoa(String.fromCharCode(...new Uint8Array(compressed)));
+        } else {
+            payload = btoa(unescape(encodeURIComponent(payload)));
+        }
+
+        const script = `#!/usr/bin/env bash
+set -euo pipefail
+tmp="$(mktemp)"
+cleanup(){ rm -f "$tmp"; }
+trap cleanup EXIT
+base64 -d <<'B64' > "$tmp.gz"
+${payload}
+B64
+python3 - <<'PY'
+import base64, gzip, json, os, subprocess, tempfile, time, sys
+payload = "${payload}"
+data = json.loads(gzip.decompress(base64.b64decode(payload)))
+frames = data["frames"]
+fps = data["fps"]
+delay = 1.0 / max(1, fps)
+for frame in frames:
+    os.system("clear")
+    print(frame)
+    time.sleep(delay)
+PY
+`;
+        downloadBlob(new Blob([script], { type: "application/x-sh" }), "video2ascii.sh");
+        setStatus("Exported .sh file.");
+    }
+
+    async function exportWebm() {
+        if (!state.framesHtml.length) return;
+        clearError();
+        const base = el.apiBaseUrl.value.trim();
+        if (base && state.token) {
+            setStatus("Sending frames for WebM export...");
+            try {
+                const settings = getSettings();
+                const response = await fetch(`${base}/api/export/webm`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${state.token}`
+                    },
+                    body: JSON.stringify({
+                        frames: state.framesRaw,
+                        fps: state.fps,
+                        color: settings.color,
+                        crt: settings.crt,
+                        charset: settings.charset,
+                        width: settings.width
+                    })
+                });
+                if (!response.ok) {
+                    const txt = await response.text();
+                    throw new Error(txt || "WebM export failed");
+                }
+                const blob = await response.blob();
+                downloadBlob(blob, "video2ascii.webm");
+                setStatus("Exported .webm file via backend.");
+                return;
+            } catch (error) {
+                setError(`Backend WebM failed, falling back to local render: ${error.message}`);
+            }
+        }
+
+        if (!("MediaRecorder" in window)) {
+            setError("WebM export not supported in this browser and backend export is unavailable.");
+            return;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 1280;
+        canvas.height = 720;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+            setError("Canvas unavailable for WebM export.");
+            return;
+        }
+
+        const stream = canvas.captureStream(state.fps);
+        const chunks = [];
+        const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp9" });
+        recorder.ondataavailable = (event) => {
+            if (event.data && event.data.size) chunks.push(event.data);
+        };
+
+        recorder.start();
+        const pre = document.createElement("pre");
+        pre.style.font = "14px 'Courier New', monospace";
+        pre.style.whiteSpace = "pre";
+        pre.style.color = "#fff";
+
+        for (let i = 0; i < state.framesHtml.length; i += 1) {
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            pre.innerHTML = state.framesHtml[i];
+            const lines = pre.textContent.split("\n");
+            ctx.fillStyle = "#fff";
+            for (let y = 0; y < lines.length; y += 1) {
+                ctx.fillText(lines[y], 20, 30 + (y * 14));
+            }
+            await new Promise((r) => setTimeout(r, Math.floor(1000 / state.fps)));
+            if ((i + 1) % 5 === 0 || i + 1 === state.framesHtml.length) {
+                setStatus(`WebM render ${i + 1}/${state.framesHtml.length}`);
+            }
+        }
+
+        await new Promise((resolve) => {
+            recorder.onstop = resolve;
+            recorder.stop();
+        });
+
+        const blob = new Blob(chunks, { type: "video/webm" });
+        downloadBlob(blob, "video2ascii.webm");
+        setStatus("Exported .webm file.");
+    }
+
+    function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    async function unlockPaid() {
+        clearError();
+        const base = el.apiBaseUrl.value.trim();
+        if (!base) {
+            setError("Set API Base URL first.");
+            return;
+        }
+        try {
+            const response = await fetch(`${base}/api/billing/checkout`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ return_url: window.location.href })
+            });
+            if (!response.ok) throw new Error("Unable to create checkout session");
+            const data = await response.json();
+            if (!data.checkout_url) throw new Error("Missing checkout_url");
+            window.location.href = data.checkout_url;
+        } catch (error) {
+            setError(error.message);
+        }
+    }
+
+    async function transcribePaid() {
+        clearError();
+        const base = el.apiBaseUrl.value.trim();
+        if (!base || !state.videoFile || !state.token) {
+            setError("Paid transcription requires API URL, video file, and paid token.");
+            return;
+        }
+        setStatus("Uploading audio for transcription...");
+        try {
+            const body = new FormData();
+            body.append("file", state.videoFile);
+            const response = await fetch(`${base}/api/transcribe`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${state.token}` },
+                body
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || "Transcription failed");
+            }
+            const data = await response.json();
+            if (!data.srt) throw new Error("No SRT returned");
+            state.subtitleSegments = readSrt(data.srt);
+            setStatus(`Loaded ${state.subtitleSegments.length} subtitle segments.`);
+            renderFrame(state.currentFrame);
+        } catch (error) {
+            setError(error.message);
+            setStatus("Transcription failed.");
+        }
+    }
+
+    async function exportMp4Paid() {
+        clearError();
+        const base = el.apiBaseUrl.value.trim();
+        if (!base || !state.token) {
+            setError("MP4 export requires paid API setup.");
+            return;
+        }
+        setStatus("Sending frames for MP4 export...");
+        try {
+            const settings = getSettings();
+            const response = await fetch(`${base}/api/export/mp4`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${state.token}`
+                },
+                body: JSON.stringify({
+                    frames: state.framesRaw,
+                    fps: state.fps,
+                    color: settings.color,
+                    crt: settings.crt,
+                    charset: settings.charset,
+                    width: settings.width
+                })
+            });
+            if (!response.ok) {
+                const txt = await response.text();
+                throw new Error(txt || "MP4 export failed");
+            }
+            const blob = await response.blob();
+            downloadBlob(blob, "video2ascii.mp4");
+            setStatus("Exported MP4.");
+        } catch (error) {
+            setError(error.message);
+            setStatus("MP4 export failed.");
+        }
+    }
+
+    function hydrateFromQuery() {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get("token");
+        if (token) {
+            state.token = token;
+            localStorage.setItem("video2ascii_paid_token", token);
+            params.delete("token");
+            const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
+            history.replaceState({}, "", next);
+        }
+        updatePaidButtons();
+    }
+
+    el.videoInput.addEventListener("change", () => {
+        const file = el.videoInput.files[0];
+        if (!file) return;
+        state.videoFile = file;
+        el.videoInfo.textContent = `${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+        el.convertBtn.disabled = false;
+        updatePaidButtons();
+    });
+    el.width.addEventListener("input", () => { el.widthValue.textContent = el.width.value; });
+    el.fps.addEventListener("input", () => { el.fpsValue.textContent = el.fps.value; });
+    el.edgeThreshold.addEventListener("input", () => { el.edgeThresholdValue.textContent = el.edgeThreshold.value; });
+    el.convertBtn.addEventListener("click", convertVideoToAscii);
+    el.exportShBtn.addEventListener("click", exportSh);
+    el.exportWebmBtn.addEventListener("click", exportWebm);
+    el.exportMp4Btn.addEventListener("click", exportMp4Paid);
+    el.unlockBtn.addEventListener("click", unlockPaid);
+    el.transcribeBtn.addEventListener("click", transcribePaid);
+
+    el.playBtn.addEventListener("click", playPlayback);
+    el.pauseBtn.addEventListener("click", pausePlayback);
+    el.loopBtn.addEventListener("click", () => {
+        state.loop = !state.loop;
+        el.loopBtn.textContent = state.loop ? "Loop On" : "Loop";
+    });
+    el.scrubber.addEventListener("input", (event) => {
+        pausePlayback();
+        renderFrame(parseInt(event.target.value, 10));
+    });
+
+    hydrateFromQuery();
+    el.widthValue.textContent = el.width.value;
+    el.fpsValue.textContent = el.fps.value;
+    el.edgeThresholdValue.textContent = el.edgeThreshold.value;
+})();
+</script>
+</body>
+</html>

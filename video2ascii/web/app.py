@@ -135,6 +135,16 @@ async def get_presets():
     return serialize_presets()
 
 
+@app.get("/public", response_class=HTMLResponse)
+async def public_index():
+    """Serve the static public deployment page."""
+    public_path = static_dir / "public.html"
+    if not public_path.exists():
+        raise HTTPException(status_code=404, detail="public.html not found")
+    with open(public_path, "r") as f:
+        return HTMLResponse(content=f.read())
+
+
 @app.get("/api/fonts")
 async def get_fonts(charset: str = "classic"):
     """Return font names available for a given charset."""
@@ -439,7 +449,7 @@ async def export_webm_endpoint(job_id: str):
         export_path,
         job["params"]["fps"],
         color=job["params"]["color"],
-        crt=job["params"]["crt"],
+        color_scheme=job.get("color_scheme"),
         work_dir=job["work_dir"],
         charset=job["params"]["charset"],
         target_width=target_width,

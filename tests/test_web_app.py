@@ -27,6 +27,13 @@ class TestWebApp:
         assert "text/html" in response.headers["content-type"]
         assert "video2ascii" in response.text.lower()
 
+    def test_public_route(self):
+        """Test public route serves public deployment HTML."""
+        response = client.get("/public")
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+        assert "video2ascii public" in response.text.lower()
+
     def test_convert_endpoint_missing_file(self):
         """Test convert endpoint without file."""
         response = client.post("/api/convert")
