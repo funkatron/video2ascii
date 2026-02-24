@@ -4,3 +4,4 @@ compatibility_date = "2026-02-24"
 
 [vars]
 PRICE_ID = "price_replace_me"
+ALLOWED_RETURN_ORIGINS = "https://your-public-app.example.com,http://localhost:9999"

@@ -3,9 +3,9 @@
  *
  * Required secrets:
  * - STRIPE_SECRET_KEY
- * - STRIPE_WEBHOOK_SECRET
  * - TOKEN_SIGNING_SECRET
  * - PRICE_ID
+ * - ALLOWED_RETURN_ORIGINS (comma separated)
  */
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
@@ -15,10 +15,11 @@ function json(data, status = 200) {
 }
 
 async function createCheckoutSession(body, env) {
+  const returnUrl = new URL(body.return_url);
   const params = new URLSearchParams();
   params.set("mode", "payment");
-  params.set("success_url", `${body.return_url}?paid=1`);
-  params.set("cancel_url", body.return_url);
+  params.set("success_url", `${returnUrl.origin}${returnUrl.pathname}?checkout_session_id={CHECKOUT_SESSION_ID}`);
+  params.set("cancel_url", `${returnUrl.origin}${returnUrl.pathname}`);
   params.set("line_items[0][price]", env.PRICE_ID);
   params.set("line_items[0][quantity]", "1");
 
@@ -57,6 +58,31 @@ async function mintToken(payload, env) {
   return `${value}.${sig}`;
 }
 
+function isAllowedReturnUrl(urlString, env) {
+  try {
+    const url = new URL(urlString);
+    const allowed = (env.ALLOWED_RETURN_ORIGINS || "")
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+    return allowed.includes(url.origin);
+  } catch {
+    return false;
+  }
+}
+
+async function fetchCheckoutSession(sessionId, env) {
+  const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` }
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Stripe lookup failed: ${text}`);
+  }
+  return response.json();
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -64,6 +90,9 @@ export default {
       try {
         const body = await request.json();
         if (!body.return_url) return json({ error: "return_url required" }, 400);
+        if (!isAllowedReturnUrl(body.return_url, env)) {
+          return json({ error: "return_url origin not allowed" }, 400);
+        }
         const checkout_url = await createCheckoutSession(body, env);
         return json({ checkout_url });
       } catch (error) {
@@ -71,13 +100,24 @@ export default {
       }
     }
 
-    if (request.method === "POST" && url.pathname === "/api/billing/token") {
-      // Lightweight token endpoint for development/CLI testing.
-      const token = await mintToken(
-        { tier: "paid", iat: Date.now(), exp: Date.now() + (30 * 24 * 3600 * 1000) },
-        env
-      );
-      return json({ token });
+    if (request.method === "POST" && url.pathname === "/api/billing/exchange") {
+      try {
+        const body = await request.json();
+        if (!body.checkout_session_id) {
+          return json({ error: "checkout_session_id required" }, 400);
+        }
+        const session = await fetchCheckoutSession(body.checkout_session_id, env);
+        if (session.payment_status !== "paid" || session.status !== "complete") {
+          return json({ error: "Payment not completed" }, 402);
+        }
+        const token = await mintToken(
+          { tier: "paid", iat: Date.now(), exp: Date.now() + (30 * 24 * 3600 * 1000), sid: session.id },
+          env
+        );
+        return json({ token });
+      } catch (error) {
+        return json({ error: error.message }, 500);
+      }
     }
 
     return json({ error: "not found" }, 404);

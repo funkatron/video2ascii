@@ -15,8 +15,8 @@ Set secrets:
 
 ```bash
 wrangler secret put STRIPE_SECRET_KEY
-wrangler secret put STRIPE_WEBHOOK_SECRET
 wrangler secret put TOKEN_SIGNING_SECRET
+wrangler secret put ALLOWED_RETURN_ORIGINS
 ```
 
 Set `PRICE_ID` in `wrangler.toml`, then deploy:
@@ -36,6 +36,7 @@ Set secrets:
 ```bash
 wrangler secret put OPENAI_API_KEY
 wrangler secret put TOKEN_SIGNING_SECRET
+wrangler secret put MAX_UPLOAD_BYTES
 ```
 
 Deploy:
@@ -50,6 +51,7 @@ Set `API Base URL` in `public.html` to your worker/API domain.
 The app expects:
 
 - `POST /api/billing/checkout` -> `{ checkout_url }`
+- `POST /api/billing/exchange` -> `{ token }`
 - `POST /api/transcribe` -> `{ srt }`
 - `POST /api/export/mp4` -> binary mp4 response
 - `POST /api/export/webm` -> binary webm response

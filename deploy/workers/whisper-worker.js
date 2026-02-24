@@ -40,6 +40,11 @@ async function verifyToken(authHeader, env) {
   }
 }
 
+function isAllowedMimeType(type) {
+  if (!type) return false;
+  return type.startsWith("audio/") || type.startsWith("video/");
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -51,6 +56,13 @@ export default {
         const formIn = await request.formData();
         const file = formIn.get("file");
         if (!file) return json({ error: "file missing" }, 400);
+        if (!isAllowedMimeType(file.type || "")) {
+          return json({ error: "Unsupported file type" }, 415);
+        }
+        const maxUploadBytes = parseInt(env.MAX_UPLOAD_BYTES || "25000000", 10);
+        if (typeof file.size === "number" && file.size > maxUploadBytes) {
+          return json({ error: `File too large (max ${maxUploadBytes} bytes)` }, 413);
+        }
 
         const formOut = new FormData();
         formOut.append("file", file, file.name || "audio_or_video");
