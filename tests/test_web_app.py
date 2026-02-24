@@ -282,6 +282,40 @@ class TestWebApp:
         result = response.json()
         assert "subtitle_segments" not in result
 
+    @patch("video2ascii.web.app.export_mp4")
+    def test_export_webm_success(self, mock_export_mp4, temp_work_dir):
+        """Test WebM export endpoint returns file when job completed."""
+        job_id = "test-job-webm"
+        export_path = temp_work_dir / "export.webm"
+        export_path.write_bytes(b"WEBM")
+
+        jobs[job_id] = {
+            "status": JobStatus.COMPLETED,
+            "frames": ["Frame 1"],
+            "work_dir": temp_work_dir,
+            "params": {
+                "fps": 12,
+                "color": False,
+                "crt": False,
+                "charset": "classic",
+                "width": 160,
+                "font": None,
+            },
+            "subtitle_srt_path": None,
+        }
+
+        response = client.get(f"/api/jobs/{job_id}/export/webm")
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("video/webm")
+        assert response.headers["content-disposition"].endswith('filename="video2ascii.webm"')
+        mock_export_mp4.assert_called_once()
+        assert mock_export_mp4.call_args[1]["codec"] == "vp9"
+
+    def test_export_webm_not_found(self):
+        """Test WebM export endpoint for missing job."""
+        response = client.get("/api/jobs/nonexistent/export/webm")
+        assert response.status_code == 404
+
     def test_fonts_endpoint_petscii(self):
         """Test /api/fonts returns font list for petscii."""
         with patch("video2ascii.web.app.list_available_fonts", return_value=["PetMe64", "PetMe128"]):

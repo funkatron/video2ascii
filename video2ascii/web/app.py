@@ -417,6 +417,44 @@ async def export_mp4_endpoint(job_id: str):
     )
 
 
+@app.get("/api/jobs/{job_id}/export/webm")
+async def export_webm_endpoint(job_id: str):
+    """Export as WebM video."""
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job = jobs[job_id]
+    if job["status"] != JobStatus.COMPLETED:
+        status = job["status"]
+        raise HTTPException(status_code=400, detail=f"Job not completed (status: {status})")
+
+    if job["frames"] is None:
+        raise HTTPException(status_code=500, detail="Frames not available")
+
+    export_path = job["work_dir"] / "export.webm"
+    target_width = min(1920, max(1280, job["params"]["width"] * 16))
+
+    export_mp4(
+        job["frames"],
+        export_path,
+        job["params"]["fps"],
+        color=job["params"]["color"],
+        crt=job["params"]["crt"],
+        work_dir=job["work_dir"],
+        charset=job["params"]["charset"],
+        target_width=target_width,
+        codec="vp9",
+        subtitle_path=job.get("subtitle_srt_path"),
+        font_override=job["params"].get("font"),
+    )
+
+    return FileResponse(
+        str(export_path),
+        media_type="video/webm",
+        filename="video2ascii.webm",
+    )
+
+
 @app.delete("/api/jobs/{job_id}")
 async def delete_job(job_id: str):
     """Delete job and clean up files."""

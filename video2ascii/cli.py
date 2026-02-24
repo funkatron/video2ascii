@@ -40,6 +40,7 @@ Examples:
   # Export
   %(prog)s input.mp4 --export movie.sh
   %(prog)s input.mp4 --color --subtitle --export-mp4 movie.mp4
+  %(prog)s input.mp4 --color --export-webm movie.webm
 
   # Web UI
   %(prog)s --web
@@ -171,6 +172,13 @@ Examples:
         type=Path,
         metavar="FILE",
         help="Export ASCII frames as video file using ProRes 422 HQ codec",
+    )
+
+    parser.add_argument(
+        "--export-webm",
+        type=Path,
+        metavar="FILE",
+        help="Export ASCII frames as WebM video file (VP9 encoding)",
     )
 
     parser.add_argument(
@@ -404,6 +412,24 @@ def main():
                 charset=args.charset,
                 target_width=target_mp4_width,
                 codec="prores422",
+                subtitle_path=subtitle_srt_path,
+                font_override=args.font,
+            )
+            return
+
+        if args.export_webm:
+            target_mp4_width = min(1920, max(1280, args.width * 16))
+            logger.debug(f"WebM target width: {target_mp4_width} (scaled from ASCII width {args.width})")
+            export_mp4(
+                frames,
+                args.export_webm,
+                args.fps,
+                color=args.color,
+                color_scheme=args.color_scheme,
+                work_dir=work_dir,
+                charset=args.charset,
+                target_width=target_mp4_width,
+                codec="vp9",
                 subtitle_path=subtitle_srt_path,
                 font_override=args.font,
             )

@@ -272,6 +272,24 @@ class TestMain:
                         mock_export.assert_called_once()
                         call_kwargs = mock_export.call_args[1]
                         assert call_kwargs.get("codec") == "prores422" or "prores422" in str(mock_export.call_args)
+
+    def test_export_webm_mode(self, temp_work_dir, sample_ascii_frame):
+        """Test export_webm mode."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+        output_webm = temp_work_dir / "output.webm"
+
+        with patch("video2ascii.cli.check_ffmpeg"):
+            with patch("video2ascii.cli.extract_frames") as mock_extract:
+                mock_extract.return_value = [temp_work_dir / "frame_000001.png"]
+                with patch("video2ascii.cli.convert_all") as mock_convert:
+                    mock_convert.return_value = [sample_ascii_frame]
+                    with patch("video2ascii.cli.export_mp4") as mock_export:
+                        sys.argv = ["video2ascii", str(test_video), "--export-webm", str(output_webm)]
+                        main()
+                        mock_export.assert_called_once()
+                        call_kwargs = mock_export.call_args[1]
+                        assert call_kwargs.get("codec") == "vp9" or "vp9" in str(mock_export.call_args)
     
     def test_error_handling_missing_ffmpeg(self, temp_work_dir):
         """Test error handling for missing ffmpeg."""
