@@ -1,0 +1,6 @@
+name = "video2ascii-stripe"
+main = "deploy/workers/stripe-worker.js"
+compatibility_date = "2026-02-24"
+
+[vars]
+PRICE_ID = "price_replace_me"
