@@ -20,21 +20,30 @@ logger = logging.getLogger(__name__)
 def parse_args():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="Convert videos to ASCII art and play in terminal",
+        prog="video2ascii",
+        description=(
+            "Convert video to ASCII for terminal playback, or export to .sh/.mp4/.mov.\n"
+            "Use presets for quick styles, subtitles for speech text, and --web for the GUI."
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   %(prog)s input.mp4
-  %(prog)s input.mp4 --width 160 --fps 12
-  %(prog)s input.mp4 --color
+
+  # Presets (explicit flags override preset defaults)
   %(prog)s input.mp4 --preset crt
-  %(prog)s input.mp4 --preset c64
-  %(prog)s input.mp4 --crt
-  %(prog)s input.mp4 --edge --invert
-  %(prog)s input.mp4 --loop --speed 1.5 --progress
-  %(prog)s input.mp4 --export movie.sh
+  %(prog)s input.mp4 --preset c64 --width 60
+
+  # Subtitles
   %(prog)s input.mp4 --subtitle
-  %(prog)s input.mp4 --subtitle --export-mp4 out.mp4
+
+  # Export
+  %(prog)s input.mp4 --export movie.sh
+  %(prog)s input.mp4 --color --subtitle --export-mp4 movie.mp4
+
+  # Web UI
+  %(prog)s --web
+  %(prog)s --web --port 9999
         """,
     )
 
@@ -42,20 +51,20 @@ Examples:
         "input",
         type=Path,
         nargs="?",
-        help="Input video file",
+        help="Input video path (required unless --web is used)",
     )
 
     parser.add_argument(
         "--web",
         action="store_true",
-        help="Start web GUI server",
+        help="Start the web GUI server instead of CLI conversion",
     )
 
     parser.add_argument(
         "--port",
         type=int,
         default=9999,
-        help="Port for web GUI server (default: 9999, used with --web)",
+        help="Port for --web server (default: 9999)",
     )
 
     parser.add_argument(
@@ -64,21 +73,21 @@ Examples:
         choices=list(PRESETS.keys()),
         default=None,
         metavar="NAME",
-        help=f"Apply a preset ({', '.join(PRESETS.keys())})",
+        help=f"Apply preset defaults: {', '.join(PRESETS.keys())}",
     )
 
     parser.add_argument(
         "--width",
         type=int,
         default=None,
-        help="ASCII output width in characters (default: 160, or from preset)",
+        help="ASCII width in characters (default: 160 or preset value)",
     )
 
     parser.add_argument(
         "--fps",
         type=int,
         default=None,
-        help="Frames per second to extract/play (default: 12, or from preset)",
+        help="Frames per second for extraction/playback (default: 12 or preset value)",
     )
 
     parser.add_argument(
@@ -91,7 +100,7 @@ Examples:
     parser.add_argument(
         "--crt",
         action="store_true",
-        help="Shorthand for --preset crt",
+        help="Backward-compatible alias for --preset crt",
     )
 
     parser.add_argument(
@@ -126,7 +135,7 @@ Examples:
         type=float,
         default=0.15,
         metavar="N",
-        help="Edge detection threshold (0.0-1.0, default: 0.15, higher=fewer edges)",
+        help="Edge threshold 0.0-1.0 (default: 0.15; higher = fewer edges)",
     )
 
     parser.add_argument(
@@ -134,7 +143,7 @@ Examples:
         type=str,
         default=None,
         metavar="NAME",
-        help=f"Character set: {', '.join(CHARSETS.keys())}, or custom string (default: classic). PETSCII gives Commodore 64 retro look.",
+        help=f"Charset name ({', '.join(CHARSETS.keys())}) or custom character string dark-to-light (example: ' .oO0', ' .:-=+*#%@', ' ⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏⠐⠑⠒⠓⠔⠕⠖⠗⠘⠙⠚⠛⠜⠝⠞⠟⠠⠡⠢⠣⠤⠥⠦⠧⠨⠩⠪⠫⠬⠭⠮⠯⠰⠱⠲⠳⠴⠵⠶⠷⠸⠹⠺⠻⠼⠽⠾⠿')",
     )
 
     parser.add_argument(
@@ -147,7 +156,7 @@ Examples:
         "--export",
         type=Path,
         metavar="FILE",
-        help="Package as standalone playable script",
+        help="Export as standalone playable shell script",
     )
 
     parser.add_argument(
@@ -167,7 +176,7 @@ Examples:
     parser.add_argument(
         "--subtitle",
         action="store_true",
-        help="Auto-generate subtitles from audio (requires whisper-cli from whisper-cpp)",
+        help="Enable subtitles (use embedded stream when present, else whisper-cli transcription)",
     )
 
     parser.add_argument(
@@ -175,21 +184,20 @@ Examples:
         type=str,
         default=None,
         metavar="NAME_OR_PATH",
-        help="Font for MP4/ProRes export (e.g. PetMe128, /path/to/font.ttf). "
-             "PetMe variants: PetMe, PetMe64, PetMe128, PetMe2X, PetMe2Y, PetMe642Y, PetMe1282Y",
+        help="MP4/ProRes font name or path (e.g. PetMe128 or /path/to/font.ttf)",
     )
 
     parser.add_argument(
         "--no-cache",
         action="store_true",
-        help="Delete temp files after playback",
+        help="Delete temporary work directory after completion",
     )
 
     parser.add_argument(
         "--aspect-ratio",
         type=float,
         default=1.2,
-        help="Terminal character aspect ratio correction (default: 1.2, lower=shorter output)",
+        help="Character aspect ratio correction (default: 1.2; lower = shorter output)",
     )
 
     parser.add_argument(
