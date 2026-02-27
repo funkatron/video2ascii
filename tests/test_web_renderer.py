@@ -2,6 +2,7 @@
 
 import pytest
 
+from video2ascii.presets import CRT_GREEN, C64_BLUE, ColorScheme
 from video2ascii.web.renderer import ansi_to_html, frames_to_html
 
 
@@ -37,11 +38,17 @@ class TestAnsiToHtml:
         assert "<script>" not in result
         assert "&lt;script&gt;" in result
 
-    def test_crt_mode(self):
-        """Test CRT green phosphor mode."""
+    def test_color_scheme_crt(self):
+        """Test CRT green color scheme."""
         text = "Hello"
-        result = ansi_to_html(text, crt=True)
-        assert "rgb(51, 255, 51)" in result or "color:" in result
+        result = ansi_to_html(text, color_scheme=CRT_GREEN)
+        assert "rgb(51, 255, 51)" in result
+
+    def test_color_scheme_c64(self):
+        """Test C64 blue color scheme."""
+        text = "Hello"
+        result = ansi_to_html(text, color_scheme=C64_BLUE)
+        assert "rgb(124, 112, 218)" in result
 
     def test_multiple_colors(self):
         """Test multiple color codes in one string."""
@@ -60,6 +67,14 @@ class TestAnsiToHtml:
         text = "Line 1\nLine 2"
         result = ansi_to_html(text)
         assert "\n" in result
+
+    def test_color_scheme_blends_existing_colors(self):
+        """Test color scheme blends with existing ANSI colors."""
+        text = "\033[38;2;255;0;0mRed\033[0m"
+        result = ansi_to_html(text, color_scheme=CRT_GREEN)
+        # Should not have the raw (255, 0, 0) — it should be blended
+        assert "rgb(255, 0, 0)" not in result
+        assert "<span" in result
 
 
 class TestFramesToHtml:
@@ -88,12 +103,11 @@ class TestFramesToHtml:
         assert len(result) == 1
         assert "rgb(255, 0, 0)" in result[0]
 
-    def test_crt_mode(self):
-        """Test CRT mode for frames."""
+    def test_color_scheme(self):
+        """Test color scheme for frames."""
         frames = ["Hello"]
-        result = frames_to_html(frames, crt=True)
+        result = frames_to_html(frames, color_scheme=CRT_GREEN)
         assert len(result) == 1
-        # Should have CRT green tint
         assert "color:" in result[0] or "rgb(51, 255, 51)" in result[0]
 
     def test_empty_frames_list(self):

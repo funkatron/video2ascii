@@ -28,7 +28,7 @@ def check_ffmpeg() -> None:
 
 
 def extract_frames(
-    input_path: Path, fps: int, width: int, work_dir: Path, crt: bool = False
+    input_path: Path, fps: int, width: int, work_dir: Path, crt_filter: bool = False
 ) -> list[Path]:
     """
     Extract frames from video using ffmpeg.
@@ -38,21 +38,19 @@ def extract_frames(
         fps: Target frames per second
         width: Target width in characters
         work_dir: Working directory for frame storage
-        edge: Apply edge detection filter
-        crt: Apply CRT enhancement filter
+        crt_filter: Apply CRT enhancement filter (unsharp)
         
     Returns:
         List of paths to extracted frame PNG files
     """
-    logger.debug(f"Extracting frames from {input_path} (fps={fps}, width={width}, crt={crt})")
+    logger.debug(f"Extracting frames from {input_path} (fps={fps}, width={width}, crt_filter={crt_filter})")
     frames_dir = work_dir / "frames"
     frames_dir.mkdir(exist_ok=True)
     
     # Build ffmpeg filter chain
     filters = [f"fps={fps}", f"scale={width}:-1"]
     
-    if crt:
-        # Add slight blur and boost contrast for CRT feel
+    if crt_filter:
         filters.append("unsharp=5:5:1.5:5:5:0.0")
         logger.debug("Added CRT enhancement filter (unsharp)")
     

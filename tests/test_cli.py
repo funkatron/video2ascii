@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from video2ascii.cli import main, parse_args
+from video2ascii.presets import CRT_GREEN, C64_BLUE
 
 # ---------------------------------------------------------------------------
 # parse_args helpers
@@ -25,7 +26,7 @@ class TestParseArgs:
                                 "--width", "120",
                                 "--fps", "15",
                                 "--color",
-                                "--crt",
+                                "--preset", "crt",
                                 "--loop",
                                 "--speed", "1.5",
                                 "--invert",
@@ -37,13 +38,11 @@ class TestParseArgs:
                                 "--verbose"]):
             args = parse_args()
         
-        # CRT mode overrides width to 80
-        assert args.width == 80
-
-
+        # Explicit --width overrides preset's width
+        assert args.width == 120
         assert args.fps == 15
         assert args.color is True
-        assert args.crt is True
+        assert args.preset == "crt"
         assert args.loop is True
         assert args.speed == 1.5
         assert args.invert is True
@@ -65,10 +64,12 @@ class TestParseArgs:
         assert args.width == 160
         assert args.fps == 12
         assert args.color is False
-        assert args.crt is False
+        assert args.preset is None
         assert args.speed == 1.0
         assert args.charset == "classic"
         assert args.verbose is False
+        assert args.color_scheme is None
+        assert args.crt_filter is False
     
     def test_width_validation(self, temp_work_dir):
         """Test width validation (must be >= 20)."""
@@ -101,16 +102,55 @@ class TestParseArgs:
             with pytest.raises(SystemExit):
                 parse_args()
     
-    def test_crt_mode_overrides(self, temp_work_dir):
-        """Test CRT mode overrides width to 80 and enables color."""
+    def test_crt_flag_maps_to_preset(self, temp_work_dir):
+        """Test --crt is shorthand for --preset crt."""
         test_video = temp_work_dir / "test.mp4"
         test_video.touch()
         
-        with patch("sys.argv", ["video2ascii", str(test_video), "--crt", "--width", "200"]):
+        with patch("sys.argv", ["video2ascii", str(test_video), "--crt"]):
             args = parse_args()
         
+        assert args.preset == "crt"
+        assert args.color_scheme is CRT_GREEN
+        assert args.crt_filter is True
         assert args.width == 80
         assert args.color is True
+
+    def test_preset_c64(self, temp_work_dir):
+        """Test --preset c64 applies C64 settings."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+        
+        with patch("sys.argv", ["video2ascii", str(test_video), "--preset", "c64"]):
+            args = parse_args()
+        
+        assert args.preset == "c64"
+        assert args.color_scheme is C64_BLUE
+        assert args.crt_filter is True
+        assert args.width == 40
+        assert args.charset == "petscii"
+        assert args.color is True
+
+    def test_preset_overridden_by_explicit_flags(self, temp_work_dir):
+        """Test explicit CLI flags override preset values."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+        
+        with patch("sys.argv", ["video2ascii", str(test_video), "--preset", "c64", "--width", "60"]):
+            args = parse_args()
+        
+        assert args.width == 60  # overridden
+        assert args.charset == "petscii"  # from preset
+
+    def test_crt_flag_does_not_override_explicit_preset(self, temp_work_dir):
+        """Test --crt doesn't override an explicit --preset."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+        
+        with patch("sys.argv", ["video2ascii", str(test_video), "--preset", "c64", "--crt"]):
+            args = parse_args()
+        
+        assert args.preset == "c64"  # explicit --preset takes priority
     
     def test_invalid_input_file(self, temp_work_dir):
         """Test invalid input file path raises error."""
@@ -128,7 +168,6 @@ class TestParseArgs:
             args = parse_args()
         assert args.verbose is True
         
-        # Logging level should be DEBUG when verbose
         with caplog.at_level(logging.DEBUG):
             assert logging.getLogger().level == logging.DEBUG
 
@@ -151,6 +190,52 @@ class TestMain:
                         sys.argv = ["video2ascii", str(test_video), "--export", str(output_script)]
                         main()
                         mock_export.assert_called_once()
+
+    def test_export_sh_c64_preset_does_not_default_to_crt(
+        self, temp_work_dir, sample_ascii_frame,
+    ):
+        """Test C64 preset keeps .sh default playback non-CRT."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+        output_script = temp_work_dir / "output.sh"
+
+        with patch("video2ascii.cli.check_ffmpeg"):
+            with patch("video2ascii.cli.extract_frames") as mock_extract:
+                mock_extract.return_value = [temp_work_dir / "frame_000001.png"]
+                with patch("video2ascii.cli.convert_all") as mock_convert:
+                    mock_convert.return_value = [sample_ascii_frame]
+                    with patch("video2ascii.cli.export") as mock_export:
+                        sys.argv = [
+                            "video2ascii", str(test_video),
+                            "--preset", "c64",
+                            "--export", str(output_script),
+                        ]
+                        main()
+                        mock_export.assert_called_once()
+                        assert mock_export.call_args[0][3] is False
+
+    def test_export_sh_crt_preset_defaults_to_crt(
+        self, temp_work_dir, sample_ascii_frame,
+    ):
+        """Test CRT preset keeps .sh default playback in CRT mode."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+        output_script = temp_work_dir / "output.sh"
+
+        with patch("video2ascii.cli.check_ffmpeg"):
+            with patch("video2ascii.cli.extract_frames") as mock_extract:
+                mock_extract.return_value = [temp_work_dir / "frame_000001.png"]
+                with patch("video2ascii.cli.convert_all") as mock_convert:
+                    mock_convert.return_value = [sample_ascii_frame]
+                    with patch("video2ascii.cli.export") as mock_export:
+                        sys.argv = [
+                            "video2ascii", str(test_video),
+                            "--preset", "crt",
+                            "--export", str(output_script),
+                        ]
+                        main()
+                        mock_export.assert_called_once()
+                        assert mock_export.call_args[0][3] is True
     
     def test_export_mp4_mode(self, temp_work_dir, sample_ascii_frame):
         """Test export_mp4 mode."""
@@ -167,7 +252,6 @@ class TestMain:
                         sys.argv = ["video2ascii", str(test_video), "--export-mp4", str(output_mp4)]
                         main()
                         mock_export.assert_called_once()
-                        # Verify codec is h265
                         call_kwargs = mock_export.call_args[1]
                         assert call_kwargs.get("codec") == "h265" or "h265" in str(mock_export.call_args)
     
@@ -186,7 +270,6 @@ class TestMain:
                         sys.argv = ["video2ascii", str(test_video), "--export-prores422", str(output_mov)]
                         main()
                         mock_export.assert_called_once()
-                        # Verify codec is prores422
                         call_kwargs = mock_export.call_args[1]
                         assert call_kwargs.get("codec") == "prores422" or "prores422" in str(mock_export.call_args)
     
@@ -217,6 +300,55 @@ class TestMain:
                             sys.argv = ["video2ascii", str(test_video), "--no-cache"]
                             main()
                             mock_rmtree.assert_called_once()
+
+    def test_preset_crt_threads_color_scheme(self, temp_work_dir, sample_ascii_frame):
+        """Test --preset crt passes color_scheme to player."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+
+        with patch("video2ascii.cli.check_ffmpeg"):
+            with patch("video2ascii.cli.extract_frames") as mock_extract:
+                mock_extract.return_value = [temp_work_dir / "frame_000001.png"]
+                with patch("video2ascii.cli.convert_all") as mock_convert:
+                    mock_convert.return_value = [sample_ascii_frame]
+                    with patch("video2ascii.cli.play") as mock_play:
+                        sys.argv = ["video2ascii", str(test_video), "--preset", "crt"]
+                        main()
+                        call_kwargs = mock_play.call_args[1]
+                        assert call_kwargs["color_scheme"] is CRT_GREEN
+
+    def test_preset_c64_threads_color_scheme(self, temp_work_dir, sample_ascii_frame):
+        """Test --preset c64 passes C64_BLUE color_scheme to player."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+
+        with patch("video2ascii.cli.check_ffmpeg"):
+            with patch("video2ascii.cli.extract_frames") as mock_extract:
+                mock_extract.return_value = [temp_work_dir / "frame_000001.png"]
+                with patch("video2ascii.cli.convert_all") as mock_convert:
+                    mock_convert.return_value = [sample_ascii_frame]
+                    with patch("video2ascii.cli.play") as mock_play:
+                        sys.argv = ["video2ascii", str(test_video), "--preset", "c64"]
+                        main()
+                        call_kwargs = mock_play.call_args[1]
+                        assert call_kwargs["color_scheme"] is C64_BLUE
+
+    def test_export_mp4_with_preset_threads_color_scheme(self, temp_work_dir, sample_ascii_frame):
+        """Test --preset crt passes color_scheme to export_mp4."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+        output_mp4 = temp_work_dir / "output.mp4"
+
+        with patch("video2ascii.cli.check_ffmpeg"):
+            with patch("video2ascii.cli.extract_frames") as mock_extract:
+                mock_extract.return_value = [temp_work_dir / "frame_000001.png"]
+                with patch("video2ascii.cli.convert_all") as mock_convert:
+                    mock_convert.return_value = [sample_ascii_frame]
+                    with patch("video2ascii.cli.export_mp4") as mock_export:
+                        sys.argv = ["video2ascii", str(test_video), "--preset", "crt", "--export-mp4", str(output_mp4)]
+                        main()
+                        call_kwargs = mock_export.call_args[1]
+                        assert call_kwargs["color_scheme"] is CRT_GREEN
 
 
 class TestSubtitleFlag:
@@ -263,7 +395,6 @@ class TestSubtitleFlag:
                             sys.argv = ["video2ascii", str(test_video), "--subtitle"]
                             main()
 
-                            # Verify play was called with subtitle_segments
                             call_kwargs = mock_play.call_args[1]
                             assert "subtitle_segments" in call_kwargs
                             assert call_kwargs["subtitle_segments"] is not None
@@ -359,7 +490,6 @@ class TestFontFlag:
                             "--font", "PetMe128",
                         ]
                         main()
-                        # export() should be called (no font_override param)
                         mock_export.assert_called_once()
 
     def test_font_threaded_to_prores_export(self, temp_work_dir, sample_ascii_frame):

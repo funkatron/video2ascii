@@ -11,6 +11,7 @@ from video2ascii.converter import check_ffmpeg, extract_frames, convert_all, CHA
 from video2ascii.exporter import export
 from video2ascii.mp4_exporter import export_mp4
 from video2ascii.player import play
+from video2ascii.presets import PRESETS
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -19,19 +20,30 @@ logger = logging.getLogger(__name__)
 def parse_args():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="Convert videos to ASCII art and play in terminal",
+        prog="video2ascii",
+        description=(
+            "Convert video to ASCII for terminal playback, or export to .sh/.mp4/.mov.\n"
+            "Use presets for quick styles, subtitles for speech text, and --web for the GUI."
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   %(prog)s input.mp4
-  %(prog)s input.mp4 --width 160 --fps 12
-  %(prog)s input.mp4 --color
-  %(prog)s input.mp4 --crt
-  %(prog)s input.mp4 --edge --invert
-  %(prog)s input.mp4 --loop --speed 1.5 --progress
-  %(prog)s input.mp4 --export movie.sh
+
+  # Presets (explicit flags override preset defaults)
+  %(prog)s input.mp4 --preset crt
+  %(prog)s input.mp4 --preset c64 --width 60
+
+  # Subtitles
   %(prog)s input.mp4 --subtitle
-  %(prog)s input.mp4 --subtitle --export-mp4 out.mp4
+
+  # Export
+  %(prog)s input.mp4 --export movie.sh
+  %(prog)s input.mp4 --color --subtitle --export-mp4 movie.mp4
+
+  # Web UI
+  %(prog)s --web
+  %(prog)s --web --port 9999
         """,
     )
 
@@ -39,46 +51,56 @@ Examples:
         "input",
         type=Path,
         nargs="?",
-        help="Input video file",
+        help="Input video path (required unless --web is used)",
     )
 
     parser.add_argument(
         "--web",
         action="store_true",
-        help="Start web GUI server",
+        help="Start the web GUI server instead of CLI conversion",
     )
 
     parser.add_argument(
         "--port",
         type=int,
         default=9999,
-        help="Port for web GUI server (default: 9999, used with --web)",
+        help="Port for --web server (default: 9999)",
+    )
+
+    parser.add_argument(
+        "--preset",
+        type=str,
+        choices=list(PRESETS.keys()),
+        default=None,
+        metavar="NAME",
+        help=f"Apply preset defaults: {', '.join(PRESETS.keys())}",
     )
 
     parser.add_argument(
         "--width",
         type=int,
-        default=160,
-        help="ASCII output width in characters (default: 160)",
+        default=None,
+        help="ASCII width in characters (default: 160 or preset value)",
     )
 
     parser.add_argument(
         "--fps",
         type=int,
-        default=12,
-        help="Frames per second to extract/play (default: 12)",
+        default=None,
+        help="Frames per second for extraction/playback (default: 12 or preset value)",
     )
 
     parser.add_argument(
         "--color",
         action="store_true",
+        default=None,
         help="Enable ANSI color output",
     )
 
     parser.add_argument(
         "--crt",
         action="store_true",
-        help="Retro CRT mode: 80 columns, green phosphor",
+        help="Backward-compatible alias for --preset crt",
     )
 
     parser.add_argument(
@@ -97,12 +119,14 @@ Examples:
     parser.add_argument(
         "--invert",
         action="store_true",
+        default=None,
         help="Invert brightness (dark mode friendly)",
     )
 
     parser.add_argument(
         "--edge",
         action="store_true",
+        default=None,
         help="Edge detection for artistic effect",
     )
 
@@ -111,15 +135,15 @@ Examples:
         type=float,
         default=0.15,
         metavar="N",
-        help="Edge detection threshold (0.0-1.0, default: 0.15, higher=fewer edges)",
+        help="Edge threshold 0.0-1.0 (default: 0.15; higher = fewer edges)",
     )
 
     parser.add_argument(
         "--charset",
         type=str,
-        default="classic",
+        default=None,
         metavar="NAME",
-        help=f"Character set: {', '.join(CHARSETS.keys())}, or custom string (default: classic). PETSCII gives Commodore 64 retro look.",
+        help=f"Charset name ({', '.join(CHARSETS.keys())}) or custom character string dark-to-light (example: ' .oO0', ' .:-=+*#%@', ' ⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏⠐⠑⠒⠓⠔⠕⠖⠗⠘⠙⠚⠛⠜⠝⠞⠟⠠⠡⠢⠣⠤⠥⠦⠧⠨⠩⠪⠫⠬⠭⠮⠯⠰⠱⠲⠳⠴⠵⠶⠷⠸⠹⠺⠻⠼⠽⠾⠿')",
     )
 
     parser.add_argument(
@@ -132,7 +156,7 @@ Examples:
         "--export",
         type=Path,
         metavar="FILE",
-        help="Package as standalone playable script",
+        help="Export as standalone playable shell script",
     )
 
     parser.add_argument(
@@ -152,7 +176,7 @@ Examples:
     parser.add_argument(
         "--subtitle",
         action="store_true",
-        help="Auto-generate subtitles from audio (requires whisper-cli from whisper-cpp)",
+        help="Enable subtitles (use embedded stream when present, else whisper-cli transcription)",
     )
 
     parser.add_argument(
@@ -160,21 +184,20 @@ Examples:
         type=str,
         default=None,
         metavar="NAME_OR_PATH",
-        help="Font for MP4/ProRes export (e.g. PetMe128, /path/to/font.ttf). "
-             "PetMe variants: PetMe, PetMe64, PetMe128, PetMe2X, PetMe2Y, PetMe642Y, PetMe1282Y",
+        help="MP4/ProRes font name or path (e.g. PetMe128 or /path/to/font.ttf)",
     )
 
     parser.add_argument(
         "--no-cache",
         action="store_true",
-        help="Delete temp files after playback",
+        help="Delete temporary work directory after completion",
     )
 
     parser.add_argument(
         "--aspect-ratio",
         type=float,
         default=1.2,
-        help="Terminal character aspect ratio correction (default: 1.2, lower=shorter output)",
+        help="Character aspect ratio correction (default: 1.2; lower = shorter output)",
     )
 
     parser.add_argument(
@@ -198,7 +221,6 @@ Examples:
             level=logging.DEBUG,
             format="%(levelname)s: %(message)s",
         )
-        # Suppress noisy low-level library logging
         logging.getLogger("PIL").setLevel(logging.WARNING)
         logging.getLogger("PIL.PngImagePlugin").setLevel(logging.WARNING)
     else:
@@ -206,6 +228,30 @@ Examples:
             level=logging.INFO,
             format="%(message)s",
         )
+
+    # --crt is shorthand for --preset crt
+    if args.crt and args.preset is None:
+        args.preset = "crt"
+
+    # Apply preset defaults, then let explicit CLI flags override
+    preset = PRESETS.get(args.preset, {}) if args.preset else {}
+
+    if args.width is None:
+        args.width = preset.get("width", 160)
+    if args.fps is None:
+        args.fps = preset.get("fps", 12)
+    if args.color is None:
+        args.color = preset.get("color", False)
+    if args.invert is None:
+        args.invert = preset.get("invert", False)
+    if args.edge is None:
+        args.edge = preset.get("edge", False)
+    if args.charset is None:
+        args.charset = preset.get("charset", "classic")
+
+    # Derive color_scheme and crt_filter from the preset
+    args.color_scheme = preset.get("color_scheme", None)
+    args.crt_filter = preset.get("crt_filter", False)
 
     # Validate arguments (skip if --web is used)
     if not args.web:
@@ -222,11 +268,6 @@ Examples:
 
     if args.speed <= 0:
         parser.error("--speed must be positive")
-
-    # CRT mode overrides width
-    if args.crt:
-        args.width = 80
-        args.color = True
 
     return args
 
@@ -246,7 +287,6 @@ def main():
             port = args.port
             url = f"http://localhost:{port}"
 
-            # Open browser after a short delay
             def open_browser():
                 import time
                 time.sleep(1.5)
@@ -268,7 +308,7 @@ def main():
 
     logger.info(f"Input file: {args.input}")
     logger.debug(f"Arguments: width={args.width}, fps={args.fps}, color={args.color}, "
-                 f"charset={args.charset}, crt={args.crt}, edge={args.edge}, invert={args.invert}")
+                 f"charset={args.charset}, preset={args.preset}, edge={args.edge}, invert={args.invert}")
 
     # Check dependencies
     logger.debug("Checking ffmpeg availability...")
@@ -288,7 +328,7 @@ def main():
             args.fps,
             args.width,
             work_dir,
-            crt=args.crt,
+            crt_filter=args.crt_filter,
         )
 
         logger.info(f"Extracted {len(frame_paths)} frames")
@@ -329,7 +369,8 @@ def main():
             if args.font:
                 logger.debug("--font ignored for .sh export (only applies to MP4/ProRes)")
             logger.info(f"Packaging {len(frames)} frames into: {args.export}")
-            export(frames, args.export, args.fps, args.crt)
+            default_crt_playback = args.crt or args.preset == "crt"
+            export(frames, args.export, args.fps, default_crt_playback)
             return
 
         if args.export_mp4:
@@ -340,7 +381,7 @@ def main():
                 args.export_mp4,
                 args.fps,
                 color=args.color,
-                crt=args.crt,
+                color_scheme=args.color_scheme,
                 work_dir=work_dir,
                 charset=args.charset,
                 target_width=target_mp4_width,
@@ -358,7 +399,7 @@ def main():
                 args.export_prores422,
                 args.fps,
                 color=args.color,
-                crt=args.crt,
+                color_scheme=args.color_scheme,
                 work_dir=work_dir,
                 charset=args.charset,
                 target_width=target_mp4_width,
@@ -372,8 +413,8 @@ def main():
         logger.info("Playing in terminal… (Ctrl-C to stop)")
         if args.loop:
             logger.info("(Looping enabled)")
-        if args.crt:
-            logger.info("(CRT mode: 80 columns, green phosphor)")
+        if args.preset:
+            logger.info(f"(Preset: {args.preset})")
         if args.charset.lower() == "petscii":
             logger.info("(PETSCII mode: For best results, use KreativeKorp Pet Me fonts)")
             logger.info("  Variants: PetMe, PetMe64, PetMe128, PetMe2X, PetMe2Y, PetMe642Y, PetMe1282Y")
@@ -383,7 +424,7 @@ def main():
             frames,
             args.fps,
             speed=args.speed,
-            crt=args.crt,
+            color_scheme=args.color_scheme,
             loop=args.loop,
             progress=args.progress,
             subtitle_segments=subtitle_segments,

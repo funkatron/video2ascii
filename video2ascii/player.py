@@ -1,11 +1,13 @@
 """Terminal playback engine."""
 
 import os
+import re
 import signal
 import sys
 import time
 from typing import Optional
 
+from video2ascii.presets import ColorScheme
 from video2ascii.subtitle import get_subtitle_for_frame
 
 
@@ -17,9 +19,29 @@ CLEAR_SCREEN = "\033[2J"
 CLEAR_LINE = "\033[K"
 RESET = "\033[0m"
 
-# CRT colors
-CRT_GREEN = "\033[38;2;51;255;51m"
-CRT_BG = "\033[48;2;5;5;5m"
+
+def _ansi_fg(r: int, g: int, b: int) -> str:
+    """Return ANSI 24-bit foreground color escape sequence."""
+    return f"\033[38;2;{r};{g};{b}m"
+
+
+def _ansi_bg(r: int, g: int, b: int) -> str:
+    """Return ANSI 24-bit background color escape sequence."""
+    return f"\033[48;2;{r};{g};{b}m"
+
+
+ANSI_FG_TRUECOLOR_RE = re.compile(r"\033\[38;2;(\d+);(\d+);(\d+)m")
+
+
+def _blend_frame_ansi_colors(frame: str, color_scheme: ColorScheme) -> str:
+    """Blend all 24-bit foreground ANSI colors in a frame with tint."""
+
+    def repl(match: re.Match) -> str:
+        r, g, b = map(int, match.groups())
+        tr, tg, tb = color_scheme.blend_color(r, g, b)
+        return _ansi_fg(tr, tg, tb)
+
+    return ANSI_FG_TRUECOLOR_RE.sub(repl, frame)
 
 
 class TerminalPlayer:
@@ -32,15 +54,6 @@ class TerminalPlayer:
         speed: float = 1.0,
         subtitle_segments: Optional[list[tuple[float, float, str]]] = None,
     ):
-        """
-        Initialize player.
-        
-        Args:
-            frames: List of ASCII art frame strings
-            fps: Original frames per second
-            speed: Playback speed multiplier
-            subtitle_segments: Parsed SRT segments for subtitle display
-        """
         self.frames = frames
         self.fps = fps
         self.speed = speed
@@ -48,7 +61,6 @@ class TerminalPlayer:
         self.interrupted = False
         self.subtitle_segments = subtitle_segments
         
-        # Set up signal handler for clean exit
         signal.signal(signal.SIGINT, self._signal_handler)
     
     def _signal_handler(self, signum, frame):
@@ -62,87 +74,75 @@ class TerminalPlayer:
         print(CURSOR_SHOW, end="", flush=True)
         print(RESET, end="", flush=True)
     
-    def draw_progress(self, current: int, total: int, crt: bool = False):
-        """
-        Draw progress bar at bottom of screen.
-        
-        Args:
-            current: Current frame number (1-indexed)
-            total: Total number of frames
-            crt: Use CRT green color
-        """
+    def draw_progress(
+        self,
+        current: int,
+        total: int,
+        color_scheme: Optional[ColorScheme] = None,
+    ):
+        """Draw progress bar at bottom of screen."""
         width = 40
         pct = int((current * 100) / total)
         filled = int((current * width) / total)
         empty = width - filled
         
-        # Move to bottom of screen
         print("\033[999;1H", end="", flush=True)
         print(CLEAR_LINE, end="", flush=True)
         
-        if crt:
-            print(CRT_GREEN, end="", flush=True)
+        if color_scheme:
+            print(_ansi_fg(*color_scheme.tint), end="", flush=True)
         
         bar = "[" + "=" * filled + " " * empty + "]"
         print(f"{bar} {pct:3d}% ({current}/{total})", end="", flush=True)
         
-        if crt:
+        if color_scheme:
             print(RESET, end="", flush=True)
     
-    def _draw_subtitle(self, frame_index: int, crt: bool, progress: bool):
-        """
-        Draw subtitle text pinned to the bottom of the terminal.
-
-        Places the subtitle on the second-to-last row when a progress bar
-        is shown, or on the last row otherwise.
-
-        Args:
-            frame_index: Current frame index (0-based).
-            crt: Use CRT green color.
-            progress: Whether the progress bar is also being drawn.
-        """
+    def _draw_subtitle(
+        self,
+        frame_index: int,
+        color_scheme: Optional[ColorScheme],
+        progress: bool,
+    ):
+        """Draw subtitle text pinned to the bottom of the terminal."""
         subtitle_text = get_subtitle_for_frame(
             self.subtitle_segments, frame_index, self.fps,
         )
 
-        # Row: second-to-last if progress bar present, otherwise last
         row = "998" if progress else "999"
         print(f"\033[{row};1H", end="", flush=True)
         print(CLEAR_LINE, end="", flush=True)
 
         if subtitle_text:
-            # Get terminal width for centering
             try:
                 cols = os.get_terminal_size().columns
             except OSError:
                 cols = 80
             padding = max(0, (cols - len(subtitle_text)) // 2)
 
-            if crt:
-                print(CRT_GREEN, end="", flush=True)
+            if color_scheme:
+                print(_ansi_fg(*color_scheme.tint), end="", flush=True)
             print(" " * padding + subtitle_text, end="", flush=True)
-            if crt:
+            if color_scheme:
                 print(RESET, end="", flush=True)
     
     def play(
         self,
-        crt: bool = False,
+        color_scheme: Optional[ColorScheme] = None,
         loop: bool = False,
         progress: bool = False,
     ):
-        """
-        Play frames.
-        
+        """Play frames.
+
         Args:
-            crt: Enable CRT green phosphor mode
-            loop: Loop playback forever
-            progress: Show progress bar
+            color_scheme: Optional ColorScheme for tinted rendering.
+            loop: Loop playback forever.
+            progress: Show progress bar.
         """
-        # Hide cursor and clear screen
         print(CURSOR_HIDE, end="", flush=True)
         
-        if crt:
-            print(CRT_BG, end="", flush=True)
+        if color_scheme:
+            print(_ansi_bg(*color_scheme.bg), end="", flush=True)
         
         print(CLEAR_SCREEN, end="", flush=True)
         
@@ -152,33 +152,31 @@ class TerminalPlayer:
                     if self.interrupted:
                         return
                     
-                    # Move cursor home and display frame
                     print(CURSOR_HOME, end="", flush=True)
                     
-                    if crt:
-                        print(CRT_GREEN, end="", flush=True)
-                    
+                    if color_scheme:
+                        print(_ansi_fg(*color_scheme.tint), end="", flush=True)
+
+                    # Preserve frame-local colors while blending them toward the
+                    # selected tint, so presets also affect colorized content.
+                    frame = _blend_frame_ansi_colors(frame, color_scheme)
+
                     print(frame, end="", flush=True)
                     
-                    if crt:
+                    if color_scheme:
                         print(RESET, end="", flush=True)
                     
-                    # Draw subtitle if available (pinned to bottom of terminal)
                     if self.subtitle_segments:
-                        self._draw_subtitle(i, crt, progress)
+                        self._draw_subtitle(i, color_scheme, progress)
                     
-                    # Draw progress if requested
                     if progress:
-                        self.draw_progress(i + 1, len(self.frames), crt)
+                        self.draw_progress(i + 1, len(self.frames), color_scheme)
                     
-                    # Sleep for frame duration
                     time.sleep(self.frame_delay)
                 
-                # Exit if not looping
                 if not loop:
                     break
                 
-                # Reset for next loop
                 print(CURSOR_HOME, end="", flush=True)
         
         finally:
@@ -189,22 +187,21 @@ def play(
     frames: list[str],
     fps: int,
     speed: float = 1.0,
-    crt: bool = False,
+    color_scheme: Optional[ColorScheme] = None,
     loop: bool = False,
     progress: bool = False,
     subtitle_segments: Optional[list[tuple[float, float, str]]] = None,
 ) -> None:
-    """
-    Play ASCII frames in terminal.
-    
+    """Play ASCII frames in terminal.
+
     Args:
-        frames: List of ASCII art frame strings
-        fps: Original frames per second
-        speed: Playback speed multiplier
-        crt: Enable CRT green phosphor mode
-        loop: Loop playback forever
-        progress: Show progress bar
-        subtitle_segments: Parsed SRT segments for subtitle display
+        frames: List of ASCII art frame strings.
+        fps: Original frames per second.
+        speed: Playback speed multiplier.
+        color_scheme: Optional ColorScheme for tinted rendering.
+        loop: Loop playback forever.
+        progress: Show progress bar.
+        subtitle_segments: Parsed SRT segments for subtitle display.
     """
     player = TerminalPlayer(frames, fps, speed, subtitle_segments=subtitle_segments)
-    player.play(crt=crt, loop=loop, progress=progress)
+    player.play(color_scheme=color_scheme, loop=loop, progress=progress)

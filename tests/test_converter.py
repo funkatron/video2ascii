@@ -65,12 +65,12 @@ class TestExtractFrames:
             return MagicMock(returncode=0)
         
         with patch("video2ascii.converter.subprocess.run", side_effect=mock_run):
-            result = extract_frames(input_path, fps=12, width=80, work_dir=temp_work_dir, crt=False)
+            result = extract_frames(input_path, fps=12, width=80, work_dir=temp_work_dir, crt_filter=False)
             assert len(result) == 3
             assert all(isinstance(p, Path) for p in result)
     
-    def test_crt_mode_adds_filter(self, temp_work_dir, mock_ffmpeg):
-        """Test that CRT mode adds unsharp filter."""
+    def test_crt_filter_adds_unsharp(self, temp_work_dir, mock_ffmpeg):
+        """Test that crt_filter adds unsharp filter."""
         input_path = temp_work_dir / "test_video.mp4"
         input_path.touch()
         
@@ -83,7 +83,7 @@ class TestExtractFrames:
             return MagicMock(returncode=0)
         
         with patch("video2ascii.converter.subprocess.run", side_effect=mock_run):
-            extract_frames(input_path, fps=12, width=80, work_dir=temp_work_dir, crt=True)
+            extract_frames(input_path, fps=12, width=80, work_dir=temp_work_dir, crt_filter=True)
             # Check that unsharp filter is in the command
             assert any("unsharp" in str(cmd) for cmd in captured_cmd)
 

@@ -9,7 +9,7 @@ def export(
     frames: list[str],
     output_path: Path,
     fps: int,
-    crt: bool,
+    default_crt_playback: bool,
 ) -> None:
     """
     Export frames as standalone bash script.
@@ -18,7 +18,8 @@ def export(
         frames: List of ASCII art frame strings
         output_path: Path to output bash script
         fps: Original frames per second
-        crt: Original CRT mode setting
+        default_crt_playback: Whether generated script should default to
+            CRT playback mode when launched without `--crt`.
     """
     # Read player template
     template_path = Path(__file__).parent / "player_template.sh"
@@ -27,7 +28,10 @@ def export(
     
     # Replace metadata placeholders
     template = template.replace("ORIG_FPS=12", f"ORIG_FPS={fps}")
-    template = template.replace("ORIG_CRT=0", f"ORIG_CRT={1 if crt else 0}")
+    template = template.replace(
+        "ORIG_CRT=0",
+        f"ORIG_CRT={1 if default_crt_playback else 0}",
+    )
     template = template.replace("TOTAL_FRAMES=0", f"TOTAL_FRAMES={len(frames)}")
     
     # Write header

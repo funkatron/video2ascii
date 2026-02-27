@@ -10,6 +10,7 @@ from video2ascii.mp4_exporter import (
     export_mp4,
     render_ascii_frame,
 )
+from video2ascii.presets import CRT_GREEN, C64_BLUE
 
 
 class TestRenderAsciiFrame:
@@ -22,7 +23,7 @@ class TestRenderAsciiFrame:
             sample_ascii_frame,
             output_path,
             color=False,
-            crt=False,
+            color_scheme=None,
             font_size=20,
             font_path=None,
             font_is_bold=False,
@@ -40,7 +41,7 @@ class TestRenderAsciiFrame:
             sample_ascii_frame_color,
             output_path,
             color=True,
-            crt=False,
+            color_scheme=None,
             font_size=20,
             font_path=None,
             font_is_bold=False,
@@ -59,8 +60,8 @@ class TestRenderAsciiFrame:
                 colors.add(pixels[x, y])
         assert len(colors) >= 1
 
-    def test_crt_mode_applies_green_tint(self, temp_work_dir, sample_ascii_frame_color):
-        """Test CRT mode applies green tint."""
+    def test_color_scheme_applies_tint(self, temp_work_dir, sample_ascii_frame_color):
+        """Test color_scheme applies tint to rendered image."""
         output_path_normal = temp_work_dir / "test_normal.png"
         output_path_crt = temp_work_dir / "test_crt.png"
 
@@ -68,7 +69,7 @@ class TestRenderAsciiFrame:
             sample_ascii_frame_color,
             output_path_normal,
             color=True,
-            crt=False,
+            color_scheme=None,
             font_size=20,
             font_path=None,
             font_is_bold=False,
@@ -80,7 +81,7 @@ class TestRenderAsciiFrame:
             sample_ascii_frame_color,
             output_path_crt,
             color=True,
-            crt=True,
+            color_scheme=CRT_GREEN,
             font_size=20,
             font_path=None,
             font_is_bold=False,
@@ -119,7 +120,7 @@ class TestRenderAsciiFrame:
             sample_ascii_frame,
             output_path,
             color=False,
-            crt=False,
+            color_scheme=None,
             font_size=20,
             font_path=None,
             font_is_bold=False,
@@ -139,7 +140,7 @@ class TestRenderAsciiFrame:
             black_frame,
             output_path,
             color=True,
-            crt=False,
+            color_scheme=None,
             font_size=20,
             font_path=None,
             font_is_bold=False,
@@ -163,7 +164,7 @@ class TestRenderAsciiFrame:
             frame_with_ansi,
             output_path,
             color=True,
-            crt=False,
+            color_scheme=None,
             font_size=20,
             font_path=None,
             font_is_bold=False,
@@ -213,7 +214,7 @@ class TestExportMP4:
                     output_path,
                     fps=12,
                     color=False,
-                    crt=False,
+                    color_scheme=None,
                     work_dir=temp_work_dir,
                     charset="classic",
                     target_width=400,
@@ -244,7 +245,7 @@ class TestExportMP4:
                     output_path,
                     fps=12,
                     color=False,
-                    crt=False,
+                    color_scheme=None,
                     work_dir=temp_work_dir,
                     charset="classic",
                     target_width=400,
@@ -273,7 +274,7 @@ class TestExportMP4:
                     output_path,
                     fps=12,
                     color=False,
-                    crt=False,
+                    color_scheme=None,
                     work_dir=temp_work_dir,
                     charset="classic",
                     target_width=400,
@@ -299,7 +300,7 @@ class TestExportMP4:
                     output_path,
                     fps=12,
                     color=True,
-                    crt=False,
+                    color_scheme=None,
                     work_dir=temp_work_dir,
                     charset="classic",
                     target_width=400,
@@ -334,7 +335,7 @@ class TestExportMP4:
                     output_path,
                     fps=12,
                     color=False,
-                    crt=False,
+                    color_scheme=None,
                     work_dir=temp_work_dir,
                     charset="classic",
                     target_width=400,
@@ -377,7 +378,7 @@ class TestExportMP4:
                     output_path,
                     fps=12,
                     color=False,
-                    crt=False,
+                    color_scheme=None,
                     work_dir=temp_work_dir,
                     charset="classic",
                     target_width=400,
@@ -417,7 +418,7 @@ class TestExportMP4:
                         output_path,
                         fps=12,
                         color=False,
-                        crt=False,
+                        color_scheme=None,
                         work_dir=temp_work_dir / charset,
                         charset=charset,
                         target_width=400,
