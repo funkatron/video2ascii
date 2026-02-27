@@ -17,7 +17,7 @@ class TestExport:
         output_path = temp_work_dir / "test_export.sh"
         frames = [sample_ascii_frame] * 3
         
-        export(frames, output_path, fps=12, crt=False)
+        export(frames, output_path, fps=12, default_crt_playback=False)
         
         assert output_path.exists()
         assert output_path.is_file()
@@ -31,7 +31,7 @@ class TestExport:
         output_path = temp_work_dir / "test_export.sh"
         frames = [sample_ascii_frame] * 3
         
-        export(frames, output_path, fps=12, crt=False)
+        export(frames, output_path, fps=12, default_crt_playback=False)
         
         content = output_path.read_text()
         # Should contain frame markers
@@ -44,7 +44,7 @@ class TestExport:
         output_path = temp_work_dir / "test_export.sh"
         frames = [sample_ascii_frame] * 3
         
-        export(frames, output_path, fps=12, crt=False)
+        export(frames, output_path, fps=12, default_crt_playback=False)
         
         content = output_path.read_text()
         # Should parse these flags
@@ -58,7 +58,7 @@ class TestExport:
         output_path = temp_work_dir / "test_export.sh"
         frames = [sample_ascii_frame] * 3
         
-        export(frames, output_path, fps=12, crt=False)
+        export(frames, output_path, fps=12, default_crt_playback=False)
         
         assert output_path.stat().st_mode & 0o111 != 0  # Executable bit set
     
@@ -67,7 +67,7 @@ class TestExport:
         output_path = temp_work_dir / "test_export.sh"
         frames = [sample_ascii_frame] * 2
         
-        export(frames, output_path, fps=12, crt=False)
+        export(frames, output_path, fps=12, default_crt_playback=False)
         
         content = output_path.read_text()
         # Extract frame data - frames are written after "---FRAME---" marker
@@ -101,7 +101,7 @@ class TestExport:
         output_path = temp_work_dir / "test_export.sh"
         frames = [sample_ascii_frame] * 3
         
-        export(frames, output_path, fps=15, crt=True)
+        export(frames, output_path, fps=15, default_crt_playback=True)
         
         content = output_path.read_text()
         # Should contain fps
@@ -111,7 +111,7 @@ class TestExport:
         
         # Test with crt=False
         output_path2 = temp_work_dir / "test_export2.sh"
-        export(frames, output_path2, fps=20, crt=False)
+        export(frames, output_path2, fps=20, default_crt_playback=False)
         content2 = output_path2.read_text()
         assert "ORIG_FPS=20" in content2
         assert "ORIG_CRT=0" in content2
@@ -121,7 +121,7 @@ class TestExport:
         output_path = temp_work_dir / "test_export.sh"
         frames = [sample_ascii_frame] * 5
         
-        export(frames, output_path, fps=12, crt=False)
+        export(frames, output_path, fps=12, default_crt_playback=False)
         
         content = output_path.read_text()
         assert "TOTAL_FRAMES=5" in content

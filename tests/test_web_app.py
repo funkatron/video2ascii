@@ -187,6 +187,33 @@ class TestWebApp:
         response = client.delete("/api/jobs/nonexistent")
         assert response.status_code == 404
 
+    @patch("video2ascii.web.app.export")
+    def test_export_sh_uses_default_crt_playback(self, mock_export, temp_work_dir):
+        """Test .sh export uses default_crt_playback, not crt_filter."""
+        job_id = "test-export-sh"
+        work_dir = temp_work_dir
+
+        def _fake_export(_frames, output_path, _fps, _default_crt_playback):
+            output_path.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+
+        mock_export.side_effect = _fake_export
+
+        jobs[job_id] = {
+            "status": JobStatus.COMPLETED,
+            "work_dir": work_dir,
+            "frames": ["Frame 1"],
+            "params": {
+                "fps": 12,
+                "crt_filter": True,
+                "default_crt_playback": False,
+            },
+        }
+
+        response = client.get(f"/api/jobs/{job_id}/export/sh")
+        assert response.status_code == 200
+        mock_export.assert_called_once()
+        assert mock_export.call_args[0][3] is False
+
     @patch("video2ascii.web.app.check_ffmpeg")
     @patch("video2ascii.web.app.extract_frames")
     @patch("video2ascii.web.app.convert_all")
@@ -372,3 +399,33 @@ class TestPresetsEndpoint:
         job_id = result["job_id"]
         assert jobs[job_id]["color_scheme"] is C64_BLUE
         assert jobs[job_id]["params"]["preset"] == "c64"
+
+    @patch("video2ascii.web.app.check_ffmpeg")
+    @patch("video2ascii.web.app.extract_frames")
+    @patch("video2ascii.web.app.convert_all")
+    def test_convert_with_preset_only_uses_server_defaults(
+        self, mock_convert_all, mock_extract_frames, mock_check_ffmpeg
+    ):
+        """Test preset-only requests resolve full defaults server-side."""
+        mock_check_ffmpeg.return_value = None
+        mock_extract_frames.return_value = [Path("/tmp/frame_000001.png")]
+        mock_convert_all.return_value = ["Frame 1"]
+
+        files = {"file": ("test.mp4", b"fake video data", "video/mp4")}
+        data = {"preset": "c64"}
+
+        response = client.post("/api/convert", files=files, data=data)
+        assert response.status_code == 200
+        result = response.json()
+        job_id = result["job_id"]
+
+        params = jobs[job_id]["params"]
+        assert params["preset"] == "c64"
+        assert params["width"] == 40
+        assert params["fps"] == 12
+        assert params["charset"] == "petscii"
+        assert params["color"] is True
+        assert params["invert"] is False
+        assert params["edge"] is False
+        assert params["crt_filter"] is True
+        assert params["default_crt_playback"] is False

@@ -17,7 +17,7 @@ from video2ascii.converter import check_ffmpeg, extract_frames, convert_all, CHA
 from video2ascii.exporter import export
 from video2ascii.fonts import list_available_fonts
 from video2ascii.mp4_exporter import export_mp4
-from video2ascii.presets import PRESETS, ColorScheme, serialize_presets
+from video2ascii.presets import PRESETS, serialize_presets
 from video2ascii.subtitle import generate_srt, parse_srt
 from video2ascii.web.renderer import frames_to_html
 
@@ -144,32 +144,37 @@ async def get_fonts(charset: str = "classic"):
 @app.post("/api/convert")
 async def convert_video(
     file: UploadFile = File(...),
-    width: int = Form(160),
-    fps: int = Form(12),
-    color: bool = Form(False),
-    invert: bool = Form(False),
-    edge: bool = Form(False),
+    width: Optional[int] = Form(None),
+    fps: Optional[int] = Form(None),
+    color: Optional[bool] = Form(None),
+    invert: Optional[bool] = Form(None),
+    edge: Optional[bool] = Form(None),
     edge_threshold: float = Form(0.15),
     aspect_ratio: float = Form(1.2),
-    charset: str = Form("classic"),
-    crt: bool = Form(False),
+    charset: Optional[str] = Form(None),
+    crt: Optional[bool] = Form(None),
     subtitle: bool = Form(False),
     font: str = Form(""),
     preset: str = Form(""),
 ):
     """Upload video and start conversion job."""
-    # Resolve preset: if a preset name is given, use its color_scheme and crt_filter
-    color_scheme = None
-    crt_filter = crt  # backward compat: bare crt checkbox acts as crt_filter
-    if preset and preset in PRESETS:
-        preset_def = PRESETS[preset]
-        color_scheme = preset_def.get("color_scheme")
-        crt_filter = preset_def.get("crt_filter", False)
+    preset_def = PRESETS.get(preset, {}) if preset else {}
+    width = width if width is not None else preset_def.get("width", 160)
+    fps = fps if fps is not None else preset_def.get("fps", 12)
+    color = color if color is not None else preset_def.get("color", False)
+    invert = invert if invert is not None else preset_def.get("invert", False)
+    edge = edge if edge is not None else preset_def.get("edge", False)
+    charset = charset if charset is not None else preset_def.get("charset", "classic")
+
+    color_scheme = preset_def.get("color_scheme")
+    crt_filter = crt if crt is not None else preset_def.get("crt_filter", False)
+    default_crt_playback = crt if crt is not None else preset == "crt"
 
     logger.info(
-        "Convert request: color=%s, invert=%s, preset=%s, crt_filter=%s, "
-        "edge=%s, subtitle=%s, font=%s",
-        color, invert, preset, crt_filter, edge, subtitle, font,
+        "Convert request: width=%s, fps=%s, charset=%s, color=%s, invert=%s, "
+        "preset=%s, crt_filter=%s, default_crt_playback=%s, edge=%s, subtitle=%s, font=%s",
+        width, fps, charset, color, invert, preset, crt_filter, default_crt_playback,
+        edge, subtitle, font,
     )
     
     if width < 20 or width > 320:
@@ -208,6 +213,7 @@ async def convert_video(
             "aspect_ratio": aspect_ratio,
             "charset": charset,
             "crt_filter": crt_filter,
+            "default_crt_playback": default_crt_playback,
             "subtitle": subtitle,
             "font": font or None,
             "preset": preset or None,
@@ -361,7 +367,7 @@ async def export_sh(job_id: str):
         job["frames"],
         export_path,
         job["params"]["fps"],
-        job["params"]["crt_filter"],
+        job["params"]["default_crt_playback"],
     )
 
     return FileResponse(

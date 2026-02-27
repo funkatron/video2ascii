@@ -190,6 +190,52 @@ class TestMain:
                         sys.argv = ["video2ascii", str(test_video), "--export", str(output_script)]
                         main()
                         mock_export.assert_called_once()
+
+    def test_export_sh_c64_preset_does_not_default_to_crt(
+        self, temp_work_dir, sample_ascii_frame,
+    ):
+        """Test C64 preset keeps .sh default playback non-CRT."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+        output_script = temp_work_dir / "output.sh"
+
+        with patch("video2ascii.cli.check_ffmpeg"):
+            with patch("video2ascii.cli.extract_frames") as mock_extract:
+                mock_extract.return_value = [temp_work_dir / "frame_000001.png"]
+                with patch("video2ascii.cli.convert_all") as mock_convert:
+                    mock_convert.return_value = [sample_ascii_frame]
+                    with patch("video2ascii.cli.export") as mock_export:
+                        sys.argv = [
+                            "video2ascii", str(test_video),
+                            "--preset", "c64",
+                            "--export", str(output_script),
+                        ]
+                        main()
+                        mock_export.assert_called_once()
+                        assert mock_export.call_args[0][3] is False
+
+    def test_export_sh_crt_preset_defaults_to_crt(
+        self, temp_work_dir, sample_ascii_frame,
+    ):
+        """Test CRT preset keeps .sh default playback in CRT mode."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+        output_script = temp_work_dir / "output.sh"
+
+        with patch("video2ascii.cli.check_ffmpeg"):
+            with patch("video2ascii.cli.extract_frames") as mock_extract:
+                mock_extract.return_value = [temp_work_dir / "frame_000001.png"]
+                with patch("video2ascii.cli.convert_all") as mock_convert:
+                    mock_convert.return_value = [sample_ascii_frame]
+                    with patch("video2ascii.cli.export") as mock_export:
+                        sys.argv = [
+                            "video2ascii", str(test_video),
+                            "--preset", "crt",
+                            "--export", str(output_script),
+                        ]
+                        main()
+                        mock_export.assert_called_once()
+                        assert mock_export.call_args[0][3] is True
     
     def test_export_mp4_mode(self, temp_work_dir, sample_ascii_frame):
         """Test export_mp4 mode."""

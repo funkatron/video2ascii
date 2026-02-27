@@ -11,7 +11,7 @@ from video2ascii.converter import check_ffmpeg, extract_frames, convert_all, CHA
 from video2ascii.exporter import export
 from video2ascii.mp4_exporter import export_mp4
 from video2ascii.player import play
-from video2ascii.presets import PRESETS, ColorScheme, CRT_GREEN
+from video2ascii.presets import PRESETS
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -361,7 +361,8 @@ def main():
             if args.font:
                 logger.debug("--font ignored for .sh export (only applies to MP4/ProRes)")
             logger.info(f"Packaging {len(frames)} frames into: {args.export}")
-            export(frames, args.export, args.fps, args.crt_filter)
+            default_crt_playback = args.crt or args.preset == "crt"
+            export(frames, args.export, args.fps, default_crt_playback)
             return
 
         if args.export_mp4:

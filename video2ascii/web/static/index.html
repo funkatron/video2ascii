@@ -404,13 +404,7 @@
 
             <div class="presets">
                 <h2>Presets</h2>
-                <div class="preset-buttons" id="presetButtons">
-                    <button class="preset-btn" data-preset="classic">Classic</button>
-                    <button class="preset-btn" data-preset="crt">CRT</button>
-                    <button class="preset-btn" data-preset="c64">C64</button>
-                    <button class="preset-btn" data-preset="sketch">Sketch</button>
-                    <button class="preset-btn" data-preset="minimal">Minimal</button>
-                </div>
+                <div class="preset-buttons" id="presetButtons"></div>
             </div>
 
             <div class="settings-section" id="basicSettings">
@@ -545,34 +539,68 @@
         // Presets (fetched from server, fallback to hardcoded)
         let presets = {};
         let activePresetName = null;
-        
+        const fallbackPresets = {
+            classic: { width: 160, fps: 12, charset: 'classic', color: false, invert: false, edge: false },
+            crt: { width: 80, fps: 12, charset: 'classic', color: true, invert: false, edge: false, crt_filter: true, color_scheme: { tint: [51, 255, 51], bg: [5, 5, 5], blend: 0.8 } },
+            c64: { width: 40, fps: 12, charset: 'petscii', color: true, invert: false, edge: false, crt_filter: true, color_scheme: { tint: [124, 112, 218], bg: [53, 40, 121], blend: 0.8 } },
+            sketch: { width: 160, fps: 12, charset: 'classic', color: false, invert: true, edge: true },
+            minimal: { width: 120, fps: 10, charset: 'simple', color: false, invert: false, edge: false },
+        };
+        const presetOrder = ['classic', 'crt', 'c64', 'sketch', 'minimal'];
+
+        function presetLabel(name) {
+            if (name === 'crt') return 'CRT';
+            if (name === 'c64') return 'C64';
+            return name.charAt(0).toUpperCase() + name.slice(1);
+        }
+
+        function bindPresetButtons() {
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    activePresetName = btn.dataset.preset;
+                    const preset = presets[activePresetName];
+                    if (preset) applyPreset(preset);
+                });
+            });
+        }
+
+        function renderPresetButtons() {
+            const container = document.getElementById('presetButtons');
+            container.innerHTML = '';
+
+            const allNames = Object.keys(presets);
+            const orderedNames = [
+                ...presetOrder.filter(name => allNames.includes(name)),
+                ...allNames.filter(name => !presetOrder.includes(name)).sort(),
+            ];
+
+            for (const name of orderedNames) {
+                const btn = document.createElement('button');
+                btn.className = 'preset-btn';
+                btn.dataset.preset = name;
+                btn.textContent = presetLabel(name);
+                container.appendChild(btn);
+            }
+
+            bindPresetButtons();
+        }
+
         async function fetchPresets() {
             try {
                 const resp = await fetch('/api/presets');
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status}`);
+                }
                 presets = await resp.json();
             } catch (err) {
                 console.error('Failed to fetch presets, using defaults:', err);
-                presets = {
-                    classic: { width: 160, fps: 12, charset: 'classic', color: false, invert: false, edge: false },
-                    crt: { width: 80, fps: 12, charset: 'classic', color: true, invert: false, edge: false, crt_filter: true, color_scheme: { tint: [51, 255, 51], bg: [5, 5, 5], blend: 0.8 } },
-                    c64: { width: 40, fps: 12, charset: 'petscii', color: true, invert: false, edge: false, crt_filter: true, color_scheme: { tint: [124, 112, 218], bg: [53, 40, 121], blend: 0.8 } },
-                    sketch: { width: 160, fps: 12, charset: 'classic', color: false, invert: true, edge: true },
-                    minimal: { width: 120, fps: 10, charset: 'simple', color: false, invert: false, edge: false },
-                };
+                presets = fallbackPresets;
             }
+            renderPresetButtons();
         }
         fetchPresets();
-        
-        // Apply preset
-        document.querySelectorAll('.preset-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                activePresetName = btn.dataset.preset;
-                const preset = presets[activePresetName];
-                if (preset) applyPreset(preset);
-            });
-        });
         
         function applyPreset(preset) {
             document.getElementById('width').value = preset.width || 160;
