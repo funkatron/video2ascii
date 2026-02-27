@@ -1,6 +1,7 @@
 """Terminal playback engine."""
 
 import os
+import re
 import signal
 import sys
 import time
@@ -27,6 +28,20 @@ def _ansi_fg(r: int, g: int, b: int) -> str:
 def _ansi_bg(r: int, g: int, b: int) -> str:
     """Return ANSI 24-bit background color escape sequence."""
     return f"\033[48;2;{r};{g};{b}m"
+
+
+ANSI_FG_TRUECOLOR_RE = re.compile(r"\033\[38;2;(\d+);(\d+);(\d+)m")
+
+
+def _blend_frame_ansi_colors(frame: str, color_scheme: ColorScheme) -> str:
+    """Blend all 24-bit foreground ANSI colors in a frame with tint."""
+
+    def repl(match: re.Match) -> str:
+        r, g, b = map(int, match.groups())
+        tr, tg, tb = color_scheme.blend_color(r, g, b)
+        return _ansi_fg(tr, tg, tb)
+
+    return ANSI_FG_TRUECOLOR_RE.sub(repl, frame)
 
 
 class TerminalPlayer:
@@ -141,7 +156,11 @@ class TerminalPlayer:
                     
                     if color_scheme:
                         print(_ansi_fg(*color_scheme.tint), end="", flush=True)
-                    
+
+                    # Preserve frame-local colors while blending them toward the
+                    # selected tint, so presets also affect colorized content.
+                    frame = _blend_frame_ansi_colors(frame, color_scheme)
+
                     print(frame, end="", flush=True)
                     
                     if color_scheme:

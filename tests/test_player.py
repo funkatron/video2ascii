@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from video2ascii.player import TerminalPlayer, play
+from video2ascii.player import TerminalPlayer, _blend_frame_ansi_colors, play
 from video2ascii.presets import CRT_GREEN, C64_BLUE, ColorScheme
 
 
@@ -191,6 +191,30 @@ class TestTerminalPlayer:
 
         output_str = "".join(printed_output)
         assert "\033[38;2;51;255;51m" in output_str
+
+    def test_blend_frame_ansi_colors_applies_scheme(self):
+        """Test per-character ANSI color codes are blended with scheme tint."""
+        frame = "\033[38;2;255;0;0mX\033[0m"
+        blended = _blend_frame_ansi_colors(frame, C64_BLUE)
+        assert "\033[38;2;150;89;174mX\033[0m" in blended
+
+    def test_play_blends_ansi_colors_in_frame_output(self):
+        """Test playback output contains blended ANSI colors, not originals."""
+        frame = "\033[38;2;255;0;0mX\033[0m"
+        printed_output = []
+
+        def mock_print(*args, **kwargs):
+            printed_output.append("".join(str(a) for a in args))
+
+        with patch("builtins.print", side_effect=mock_print):
+            with patch("time.sleep"):
+                with patch("signal.signal"):
+                    player = TerminalPlayer([frame], fps=12, speed=100.0)
+                    player.play(color_scheme=C64_BLUE, loop=False, progress=False)
+
+        output_str = "".join(printed_output)
+        assert "\033[38;2;150;89;174m" in output_str
+        assert "\033[38;2;255;0;0m" not in output_str
 
 
 class TestPlayFunction:
