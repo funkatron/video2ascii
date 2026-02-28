@@ -2,6 +2,15 @@
 
 This guide deploys `video2ascii/web/static/public.html` with optional paid services.
 
+## AWS-only quick path
+
+For a fully AWS-hosted first run (EC2 + Docker Compose + free mode), use:
+
+- `deploy/aws/README.md` (canonical runbook)
+
+This path keeps bearer auth enabled and bypasses payment only when
+`VIDEO2ASCII_FREE_MODE=true`.
+
 ## Phase 1 (Free)
 
 1. Host static assets (`video2ascii/web/static/`) on Cloudflare Pages.

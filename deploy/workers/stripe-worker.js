@@ -4,6 +4,8 @@
  * Required secrets:
  * - STRIPE_SECRET_KEY
  * - TOKEN_SIGNING_SECRET
+ * - VIDEO2ASCII_FREE_MODE (optional: "true" to enable free token endpoint)
+ * - VIDEO2ASCII_FREE_TOKEN_TTL_SECONDS (optional)
  * - PRICE_ID
  * - ALLOWED_RETURN_ORIGINS (comma separated)
  */
@@ -100,6 +102,16 @@ async function mintToken(payload, env) {
   return `${value}.${sig}`;
 }
 
+function isFreeMode(env) {
+  return String(env.VIDEO2ASCII_FREE_MODE || "").toLowerCase() === "true";
+}
+
+function freeTokenTtlMs(env) {
+  const ttlSec = Number.parseInt(env.VIDEO2ASCII_FREE_TOKEN_TTL_SECONDS || "86400", 10);
+  const safeTtlSec = Number.isFinite(ttlSec) && ttlSec > 0 ? ttlSec : 86400;
+  return safeTtlSec * 1000;
+}
+
 function isAllowedReturnUrl(urlString, env) {
   try {
     const url = new URL(urlString);
@@ -132,6 +144,9 @@ export default {
       return preflight(request, env);
     }
     if (request.method === "POST" && url.pathname === "/api/billing/checkout") {
+      if (isFreeMode(env)) {
+        return json({ error: "checkout disabled in free mode" }, 403, request, env);
+      }
       try {
         const body = await request.json();
         if (!body.return_url) return json({ error: "return_url required" }, 400, request, env);
@@ -146,6 +161,9 @@ export default {
     }
 
     if (request.method === "POST" && url.pathname === "/api/billing/exchange") {
+      if (isFreeMode(env)) {
+        return json({ error: "exchange disabled in free mode" }, 403, request, env);
+      }
       try {
         const body = await request.json();
         if (!body.checkout_session_id) {
@@ -160,6 +178,27 @@ export default {
           env
         );
         return json({ token }, 200, request, env);
+      } catch (error) {
+        return json({ error: error.message }, 500, request, env);
+      }
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/billing/free-token") {
+      if (!isFreeMode(env)) {
+        return json({ error: "free mode not enabled" }, 404, request, env);
+      }
+      try {
+        const now = Date.now();
+        const token = await mintToken(
+          {
+            tier: "free",
+            iat: now,
+            exp: now + freeTokenTtlMs(env),
+            sid: `free-${crypto.randomUUID()}`
+          },
+          env
+        );
+        return json({ token, mode: "free" }, 200, request, env);
       } catch (error) {
         return json({ error: error.message }, 500, request, env);
       }

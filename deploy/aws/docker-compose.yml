@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  web-app:
+    build:
+      context: ../..
+      dockerfile: deploy/aws/Dockerfile
+    command: uvicorn video2ascii.web.app:app --host 0.0.0.0 --port 8080
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  export-api:
+    build:
+      context: ../..
+      dockerfile: deploy/aws/Dockerfile
+    command: uvicorn video2ascii.services.mp4_api:app --host 0.0.0.0 --port 8081
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  reverse-proxy:
+    image: nginx:1.27-alpine
+    depends_on:
+      - web-app
+      - export-api
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped

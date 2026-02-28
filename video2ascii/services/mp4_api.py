@@ -1,8 +1,13 @@
-"""HTTP API for paid video exports (WebM/MP4)."""
+"""HTTP API for video exports (WebM/MP4)."""
 
+import base64
+import hashlib
+import hmac
+import json
 import os
 import shutil
 import tempfile
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -58,16 +63,46 @@ _RATE_STATE: dict[str, list[float]] = {}
 
 def _check_token(auth_header: Optional[str]) -> None:
     expected = os.environ.get("VIDEO2ASCII_EXPORT_TOKEN", "")
-    allow_unauth = os.environ.get("VIDEO2ASCII_ALLOW_UNAUTH", "").lower() == "true"
-    if not expected and allow_unauth:
-        return
-    if not expected and not allow_unauth:
-        raise HTTPException(status_code=500, detail="Server auth token is not configured")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing bearer token")
     token = auth_header.replace("Bearer ", "", 1).strip()
-    if token != expected:
-        raise HTTPException(status_code=403, detail="Invalid token")
+    if expected and token == expected:
+        return
+    if _free_mode_enabled() and _verify_signed_token(token):
+        return
+    if not expected and not _free_mode_enabled():
+        raise HTTPException(status_code=500, detail="Server auth token is not configured")
+    raise HTTPException(status_code=403, detail="Invalid token")
+
+
+def _free_mode_enabled() -> bool:
+    return os.environ.get("VIDEO2ASCII_FREE_MODE", "").lower() == "true"
+
+
+def _verify_signed_token(token: str) -> bool:
+    secret = os.environ.get("VIDEO2ASCII_FREE_ISSUER_SECRET", "")
+    if not secret:
+        return False
+    parts = token.split(".")
+    if len(parts) != 2:
+        return False
+    payload_b64, provided_sig = parts
+    expected_sig = hmac.new(
+        secret.encode("utf-8"),
+        payload_b64.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(expected_sig, provided_sig):
+        return False
+    try:
+        payload_bytes = base64.b64decode(payload_b64 + "===")
+        payload = json.loads(payload_bytes.decode("utf-8"))
+    except Exception:
+        return False
+    exp = payload.get("exp")
+    if not isinstance(exp, (int, float)):
+        return False
+    return exp > int(time.time() * 1000)
 
 
 def _safe_target_width(width_chars: int) -> int:

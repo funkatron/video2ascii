@@ -5,6 +5,10 @@ Two workers are provided:
 - `stripe-worker.js`: creates Stripe Checkout sessions and mints signed paid tokens.
 - `whisper-worker.js`: validates paid token and proxies transcription to OpenAI.
 
+For AWS-only deployments that do not use Cloudflare Workers, see:
+
+- `deploy/aws/README.md`
+
 ## 1) Stripe Worker
 
 Copy:
@@ -18,6 +22,8 @@ wrangler secret put STRIPE_SECRET_KEY
 wrangler secret put TOKEN_SIGNING_SECRET
 wrangler secret put ALLOWED_RETURN_ORIGINS
 wrangler secret put CORS_ALLOW_ORIGINS
+wrangler secret put VIDEO2ASCII_FREE_MODE
+wrangler secret put VIDEO2ASCII_FREE_TOKEN_TTL_SECONDS
 ```
 
 Set `PRICE_ID` in `wrangler.toml`, then deploy:
@@ -39,6 +45,9 @@ wrangler secret put OPENAI_API_KEY
 wrangler secret put TOKEN_SIGNING_SECRET
 wrangler secret put MAX_UPLOAD_BYTES
 wrangler secret put CORS_ALLOW_ORIGINS
+wrangler secret put VIDEO2ASCII_TRANSCRIBE_PROVIDER
+wrangler secret put VIDEO2ASCII_LOCAL_TRANSCRIBE_URL
+wrangler secret put VIDEO2ASCII_LOCAL_TRANSCRIBE_SECRET
 ```
 
 Notes:
@@ -46,6 +55,8 @@ Notes:
 - `CORS_ALLOW_ORIGINS` is a comma-separated list of allowed browser origins.
 - If omitted, workers default to `*` for development convenience.
 - Workers now respond to `OPTIONS` preflight for browser `POST` calls with `Authorization`/JSON headers.
+- Stripe worker exposes `POST /api/billing/free-token` when `VIDEO2ASCII_FREE_MODE=true`.
+- Whisper worker supports `VIDEO2ASCII_TRANSCRIBE_PROVIDER=local` via `VIDEO2ASCII_LOCAL_TRANSCRIBE_URL`.
 
 Deploy:
 

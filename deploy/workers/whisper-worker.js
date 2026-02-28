@@ -4,6 +4,10 @@
  * Required secrets:
  * - OPENAI_API_KEY
  * - TOKEN_SIGNING_SECRET
+ * Optional:
+ * - VIDEO2ASCII_TRANSCRIBE_PROVIDER=openai|local (default openai)
+ * - VIDEO2ASCII_LOCAL_TRANSCRIBE_URL (required when provider=local)
+ * - VIDEO2ASCII_LOCAL_TRANSCRIBE_SECRET (optional header for local endpoint)
  */
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
@@ -87,6 +91,33 @@ function isAllowedMimeType(type) {
   return type.startsWith("audio/") || type.startsWith("video/");
 }
 
+async function transcribeWithLocalProvider(file, env) {
+  const targetUrl = env.VIDEO2ASCII_LOCAL_TRANSCRIBE_URL || "";
+  if (!targetUrl) {
+    throw new Error("VIDEO2ASCII_LOCAL_TRANSCRIBE_URL is required for local provider");
+  }
+  const formOut = new FormData();
+  formOut.append("file", file, file.name || "audio_or_video");
+  const headers = {};
+  if (env.VIDEO2ASCII_LOCAL_TRANSCRIBE_SECRET) {
+    headers["x-transcribe-secret"] = env.VIDEO2ASCII_LOCAL_TRANSCRIBE_SECRET;
+  }
+  const response = await fetch(targetUrl, {
+    method: "POST",
+    headers,
+    body: formOut
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Local transcription failed");
+  }
+  const data = await response.json();
+  if (!data.srt) {
+    throw new Error("Local transcription response missing srt");
+  }
+  return data.srt;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -107,6 +138,12 @@ export default {
         const maxUploadBytes = parseInt(env.MAX_UPLOAD_BYTES || "25000000", 10);
         if (typeof file.size === "number" && file.size > maxUploadBytes) {
           return json({ error: `File too large (max ${maxUploadBytes} bytes)` }, 413, request, env);
+        }
+
+        const provider = (env.VIDEO2ASCII_TRANSCRIBE_PROVIDER || "openai").toLowerCase();
+        if (provider === "local") {
+          const srt = await transcribeWithLocalProvider(file, env);
+          return json({ srt }, 200, request, env);
         }
 
         const formOut = new FormData();

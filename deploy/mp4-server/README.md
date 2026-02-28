@@ -2,6 +2,10 @@
 
 This service exposes paid export endpoints used by `public.html`.
 
+For AWS-only free-mode deployment on EC2 with compose, see:
+
+- `deploy/aws/README.md`
+
 ## Endpoints
 
 - `POST /api/export/webm`
@@ -23,6 +27,10 @@ Request body:
 ```
 
 Set `VIDEO2ASCII_EXPORT_TOKEN` to require bearer auth (recommended for all non-local environments).
+In free mode, signed bearer tokens issued by `/api/billing/free-token` are also accepted when:
+
+- `VIDEO2ASCII_FREE_MODE=true`
+- `VIDEO2ASCII_FREE_ISSUER_SECRET` is set
 
 CORS is enabled for browser clients. Configure allowed origins with:
 
