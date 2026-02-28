@@ -24,6 +24,10 @@ Request body:
 
 Set `VIDEO2ASCII_EXPORT_TOKEN` to require bearer auth (recommended for all non-local environments).
 
+CORS is enabled for browser clients. Configure allowed origins with:
+
+- `VIDEO2ASCII_CORS_ALLOW_ORIGINS` (default: `*`, comma-separated list supported)
+
 ## Local run
 
 ```bash

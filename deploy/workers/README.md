@@ -17,6 +17,7 @@ Set secrets:
 wrangler secret put STRIPE_SECRET_KEY
 wrangler secret put TOKEN_SIGNING_SECRET
 wrangler secret put ALLOWED_RETURN_ORIGINS
+wrangler secret put CORS_ALLOW_ORIGINS
 ```
 
 Set `PRICE_ID` in `wrangler.toml`, then deploy:
@@ -37,7 +38,14 @@ Set secrets:
 wrangler secret put OPENAI_API_KEY
 wrangler secret put TOKEN_SIGNING_SECRET
 wrangler secret put MAX_UPLOAD_BYTES
+wrangler secret put CORS_ALLOW_ORIGINS
 ```
+
+Notes:
+
+- `CORS_ALLOW_ORIGINS` is a comma-separated list of allowed browser origins.
+- If omitted, workers default to `*` for development convenience.
+- Workers now respond to `OPTIONS` preflight for browser `POST` calls with `Authorization`/JSON headers.
 
 Deploy:
 

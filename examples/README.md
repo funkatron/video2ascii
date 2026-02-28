@@ -1,6 +1,6 @@
 # Examples
 
-This directory contains example exported ASCII movies created with `video2ascii --export` and `video2ascii --export-mp4`.
+This directory contains example exported ASCII movies created with `video2ascii --export`, `video2ascii --export-webm`, and `video2ascii --export-mp4`.
 
 ## Available Examples
 
@@ -96,4 +96,4 @@ uv pip install -e ".[web]"
 video2ascii --web
 ```
 
-The web GUI supports drag-and-drop upload, presets (Classic, CRT, C64, Sketch, Minimal), live playback, subtitle generation, font selection for PETSCII, and export to .sh or .mp4.
+The web GUI supports drag-and-drop upload, presets (Classic, CRT, C64, Sketch, Minimal), live playback, subtitle generation, font selection for PETSCII, and export to `.sh`, `.webm`, or `.mp4`.

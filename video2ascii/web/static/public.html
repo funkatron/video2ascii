@@ -958,14 +958,14 @@ PY
         const checkoutSessionId = params.get("checkout_session_id");
         const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
         if (checkoutSessionId) {
-            params.delete("checkout_session_id");
-            history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
             exchangeCheckoutSession(checkoutSessionId)
                 .then(() => {
+                    params.delete("checkout_session_id");
+                    history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
                     setStatus("Paid features unlocked.");
                     updatePaidButtons();
                 })
-                .catch((error) => setError(error.message));
+                .catch((error) => setError(`${error.message}. You can retry unlock; checkout session was preserved.`));
         } else {
             history.replaceState({}, "", next);
         }

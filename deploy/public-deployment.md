@@ -22,6 +22,14 @@ Deploy workers in `deploy/workers`:
 - `stripe-worker.js` for checkout/token
 - `whisper-worker.js` for paid transcription proxy
 
+Set CORS origins for browser calls:
+
+```bash
+wrangler secret put CORS_ALLOW_ORIGINS
+```
+
+Use a comma-separated allowlist (for example your Pages URL and local dev origin).
+
 Configure `API Base URL` in `public.html` UI to your deployed domain.
 
 ## Phase 3 (Paid MP4 export)
@@ -40,6 +48,7 @@ Recommended hardening envs:
 fly secrets set VIDEO2ASCII_MAX_REQUEST_BYTES=20000000
 fly secrets set VIDEO2ASCII_MAX_CHARS_PER_FRAME=20000
 fly secrets set VIDEO2ASCII_RATE_LIMIT_PER_MINUTE=20
+fly secrets set VIDEO2ASCII_CORS_ALLOW_ORIGINS=https://your-pages-domain
 ```
 
 Expose endpoint(s):

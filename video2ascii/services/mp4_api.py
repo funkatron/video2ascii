@@ -7,13 +7,30 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, model_validator
 from starlette.background import BackgroundTask
 
 from video2ascii.mp4_exporter import export_mp4
+from video2ascii.presets import CRT_GREEN
 
 app = FastAPI(title="video2ascii Export API")
+
+
+def _cors_origins() -> list[str]:
+    raw = os.environ.get("VIDEO2ASCII_CORS_ALLOW_ORIGINS", "*")
+    origins = [item.strip() for item in raw.split(",") if item.strip()]
+    return origins or ["*"]
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins(),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 
 class ExportRequest(BaseModel):
@@ -82,12 +99,13 @@ def _check_content_length(request: Request) -> None:
 def _run_export(req: ExportRequest, suffix: str, codec: str) -> Path:
     work_dir = Path(tempfile.mkdtemp(prefix="video2ascii_export_"))
     out_path = work_dir / f"export{suffix}"
+    color_scheme = CRT_GREEN if req.crt else None
     export_mp4(
         req.frames,
         out_path,
         req.fps,
         color=req.color,
-        crt=req.crt,
+        color_scheme=color_scheme,
         work_dir=work_dir,
         charset=req.charset,
         target_width=_safe_target_width(req.width),
