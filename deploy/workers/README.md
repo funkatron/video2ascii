@@ -5,6 +5,11 @@ Two workers are provided:
 - `stripe-worker.js`: creates Stripe Checkout sessions and mints signed paid tokens.
 - `whisper-worker.js`: validates paid token and proxies transcription to OpenAI.
 
+These workers support both:
+
+- paid mode (Stripe checkout + exchange)
+- free mode testing (`/api/billing/free-token`, token auth still required)
+
 For AWS-only deployments that do not use Cloudflare Workers, see:
 
 - `deploy/aws/README.md`
@@ -57,6 +62,7 @@ Notes:
 - Workers now respond to `OPTIONS` preflight for browser `POST` calls with `Authorization`/JSON headers.
 - Stripe worker exposes `POST /api/billing/free-token` when `VIDEO2ASCII_FREE_MODE=true`.
 - Whisper worker supports `VIDEO2ASCII_TRANSCRIBE_PROVIDER=local` via `VIDEO2ASCII_LOCAL_TRANSCRIBE_URL`.
+- Keep `TOKEN_SIGNING_SECRET` consistent across billing/transcription services that mint/verify tokens.
 
 Deploy:
 

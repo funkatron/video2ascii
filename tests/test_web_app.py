@@ -32,7 +32,7 @@ class TestWebApp:
         response = client.get("/public")
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
-        assert "video2ascii public" in response.text.lower()
+        assert "<title>video2ascii</title>" in response.text.lower()
 
     def test_convert_endpoint_missing_file(self):
         """Test convert endpoint without file."""

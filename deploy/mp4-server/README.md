@@ -32,6 +32,11 @@ In free mode, signed bearer tokens issued by `/api/billing/free-token` are also 
 - `VIDEO2ASCII_FREE_MODE=true`
 - `VIDEO2ASCII_FREE_ISSUER_SECRET` is set
 
+If you are running the single-host AWS compose path, this service is started behind nginx and routed at:
+
+- `/api/export/mp4`
+- `/api/export/webm`
+
 CORS is enabled for browser clients. Configure allowed origins with:
 
 - `VIDEO2ASCII_CORS_ALLOW_ORIGINS` (default: `*`, comma-separated list supported)

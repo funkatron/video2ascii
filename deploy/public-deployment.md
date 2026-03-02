@@ -11,6 +11,12 @@ For a fully AWS-hosted first run (EC2 + Docker Compose + free mode), use:
 This path keeps bearer auth enabled and bypasses payment only when
 `VIDEO2ASCII_FREE_MODE=true`.
 
+It now includes:
+
+- local workstation flow (macOS/Linux with Docker Desktop or docker+compose)
+- production EC2 flow
+- architecture-aware Compose plugin install (`x86_64` vs `aarch64`)
+
 ## Phase 1 (Free)
 
 1. Host static assets (`video2ascii/web/static/`) on Cloudflare Pages.

@@ -49,6 +49,15 @@ Features:
 - Font chooser for PETSCII charset
 - Export to .sh, .webm, or .mp4
 
+## Deployment docs
+
+Deployment/runbook docs are in `deploy/`:
+
+- `deploy/aws/README.md` - canonical AWS runbook (local dev + EC2 production, free mode)
+- `deploy/public-deployment.md` - public deployment phases and architecture notes
+- `deploy/workers/README.md` - billing/transcription worker setup
+- `deploy/mp4-server/README.md` - export API service details
+
 ## Requirements
 
 **System dependencies:**
