@@ -11,10 +11,12 @@
             background: #000;
             color: #fff;
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         .container {
             display: grid;
-            grid-template-columns: 320px 1fr;
+            grid-template-columns: 280px 1fr;
             height: 100vh;
         }
         .sidebar {
@@ -26,33 +28,119 @@
         }
         h1 {
             font-size: 0.875rem;
-            font-weight: 500;
+            font-weight: 400;
             text-transform: uppercase;
             letter-spacing: 0.15em;
             margin-bottom: 14px;
+            color: #000;
         }
         .privacy-note {
-            margin-bottom: 16px;
+            margin-bottom: 20px;
             font-size: 0.7rem;
             line-height: 1.5;
             color: rgba(0, 0, 0, 0.72);
         }
-        .settings-section { margin-bottom: 16px; }
+        .upload-area {
+            border: 1px dashed #999;
+            background: rgba(0, 0, 0, 0.02);
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 22px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .upload-area:hover {
+            background: rgba(0, 0, 0, 0.05);
+            border-color: #000;
+        }
+        .upload-area.dragover {
+            background: rgba(0, 0, 0, 0.08);
+            border-color: #000;
+        }
+        .upload-area input[type="file"] { display: none; }
+        .upload-area p {
+            font-size: 0.75rem;
+            color: rgba(0, 0, 0, 0.75);
+        }
+        #videoInfo {
+            margin-top: 6px;
+            font-size: 0.68rem;
+            color: rgba(0, 0, 0, 0.65);
+            word-break: break-word;
+        }
+        .presets {
+            margin-bottom: 22px;
+        }
+        .presets h2 {
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 10px;
+            color: #000;
+        }
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .preset-btn {
+            background: #fff;
+            color: #000;
+            border: 1px solid #000;
+            padding: 8px 12px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+        .preset-btn:hover { background: rgba(0, 0, 0, 0.05); }
+        .preset-btn.active {
+            background: #000;
+            color: #fff;
+            font-weight: 600;
+        }
+        .settings-section {
+            margin-bottom: 16px;
+        }
         .settings-section h2 {
             font-size: 0.7rem;
             font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.15em;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
+            color: #000;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .settings-section h2::after {
+            content: "▼";
+            font-size: 0.6rem;
+            transition: transform 0.2s ease;
+        }
+        .settings-section.collapsed h2::after {
+            transform: rotate(-90deg);
+        }
+        .settings-section.collapsed .settings-content {
+            display: none;
+        }
+        .settings-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
         .setting-group {
             display: flex;
             flex-direction: column;
             gap: 6px;
-            margin-bottom: 10px;
         }
         .setting-group label {
-            font-size: 0.68rem;
+            font-size: 0.7rem;
             color: #222;
             font-weight: 500;
             text-transform: uppercase;
@@ -70,12 +158,13 @@
             background: #fff;
             border: 1px solid #999;
             color: #000;
-            padding: 6px 8px;
+            padding: 5px 8px;
             font-size: 0.75rem;
             font-family: inherit;
             width: 100%;
         }
-        .setting-group input:focus, .setting-group select:focus {
+        .setting-group input:focus,
+        .setting-group select:focus {
             outline: none;
             border-color: #000;
         }
@@ -88,38 +177,22 @@
             width: 14px;
             height: 14px;
             accent-color: #000;
+            cursor: pointer;
         }
         .checkbox-group label {
-            font-size: 0.68rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
             font-weight: 500;
             color: #222;
-        }
-        .file-input-wrap {
-            border: 1px dashed #999;
-            background: rgba(0, 0, 0, 0.02);
-            padding: 10px;
-            text-align: center;
             cursor: pointer;
-        }
-        .file-input-wrap input { display: none; }
-        .file-input-wrap p {
-            font-size: 0.7rem;
-            color: rgba(0, 0, 0, 0.75);
-        }
-        .file-info {
-            margin-top: 6px;
-            font-size: 0.68rem;
-            color: rgba(0, 0, 0, 0.65);
-            word-break: break-word;
         }
         button {
             background: #000;
             color: #fff;
             border: 1px solid #000;
-            padding: 9px 14px;
-            font-size: 0.66rem;
+            padding: 10px 20px;
+            font-size: 0.7rem;
             font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.15em;
@@ -127,7 +200,7 @@
             font-family: inherit;
             transition: all 0.2s ease;
             width: 100%;
-            margin-top: 6px;
+            margin-top: 5px;
         }
         button:hover:not(:disabled) {
             background: #fff;
@@ -139,11 +212,6 @@
             color: #666;
             cursor: not-allowed;
         }
-        .button-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
         .main-area {
             display: flex;
             flex-direction: column;
@@ -153,7 +221,7 @@
         .preview-area {
             flex: 1;
             background: #000;
-            padding: 36px;
+            padding: 40px;
             overflow: auto;
             display: flex;
             align-items: center;
@@ -170,21 +238,20 @@
             text-align: center;
         }
         .preview-placeholder {
-            color: rgba(255, 255, 255, 0.4);
+            color: rgba(255, 255, 255, 0.3);
             font-size: 0.875rem;
             text-align: center;
-            font-family: inherit;
         }
         .subtitle-overlay {
             position: absolute;
             bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.85);
+            color: rgba(255, 255, 255, 0.75);
             font-size: 0.7rem;
             font-family: "Courier New", "Monaco", "Menlo", monospace;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.15em;
             text-align: center;
             max-width: 80%;
             pointer-events: none;
@@ -194,8 +261,8 @@
         .controls-bar {
             background: rgba(255, 255, 255, 0.05);
             border-top: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 14px 20px;
-            display: flex;
+            padding: 15px 20px;
+            display: none;
             align-items: center;
             gap: 12px;
             flex-wrap: wrap;
@@ -203,18 +270,45 @@
         .controls-bar button {
             width: auto;
             margin: 0;
-            padding: 6px 12px;
+            padding: 6px 14px;
+            font-size: 0.7rem;
         }
         .controls-bar input[type="range"] {
             flex: 1;
-            min-width: 180px;
+            min-width: 150px;
             height: 4px;
             accent-color: #fff;
         }
         .controls-bar span {
             font-size: 0.7rem;
-            color: rgba(255, 255, 255, 0.8);
-            min-width: 100px;
+            color: rgba(255, 255, 255, 0.7);
+            min-width: 80px;
+        }
+        .export-buttons {
+            display: none;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        .export-buttons button {
+            flex: 1;
+            margin: 0;
+            padding: 6px 12px;
+            font-size: 0.65rem;
+        }
+        .high-resource-tools {
+            margin-top: 10px;
+            border-top: 1px solid rgba(0, 0, 0, 0.12);
+            padding-top: 12px;
+            display: none;
+        }
+        .high-resource-tools.active {
+            display: block;
+        }
+        .high-resource-note {
+            margin-top: 6px;
+            font-size: 0.65rem;
+            color: rgba(0, 0, 0, 0.7);
+            line-height: 1.4;
         }
         .status {
             margin-top: 8px;
@@ -232,16 +326,7 @@
             font-size: 0.7rem;
             display: none;
         }
-        .paid-note {
-            margin-top: 6px;
-            font-size: 0.65rem;
-            color: rgba(0, 0, 0, 0.7);
-            line-height: 1.4;
-        }
-        .free-mode-note {
-            margin-top: 6px;
-            font-size: 0.65rem;
-            color: #0b5f2a;
+        .hidden {
             display: none;
         }
     </style>
@@ -250,76 +335,91 @@
 <div class="container">
     <div class="sidebar">
         <h1>video2ascii</h1>
-        <p class="privacy-note">Your video never leaves your browser for local conversion. Paid features use configured backend APIs.</p>
+        <p class="privacy-note">Your video never leaves your browser for local conversion.</p>
 
-        <div class="settings-section">
-            <h2>Input</h2>
-            <label class="file-input-wrap" for="videoInput">
-                <p>Select video</p>
-                <input id="videoInput" type="file" accept="video/*">
-                <div id="videoInfo" class="file-info"></div>
-            </label>
+        <label class="upload-area" id="uploadArea" for="videoInput">
+            <p>Upload</p>
+            <input id="videoInput" type="file" accept="video/*">
+            <div id="videoInfo"></div>
+        </label>
+
+        <div class="presets">
+            <h2>Presets</h2>
+            <div class="preset-buttons" id="presetButtons"></div>
         </div>
 
-        <div class="settings-section">
+        <div class="settings-section" id="basicSettings">
             <h2>Basic</h2>
-            <div class="setting-group">
-                <label for="width">Width: <span id="widthValue">120</span></label>
-                <input id="width" type="range" min="20" max="320" value="120">
-            </div>
-            <div class="setting-group">
-                <label for="fps">FPS: <span id="fpsValue">12</span></label>
-                <input id="fps" type="range" min="1" max="30" value="12">
-            </div>
-            <div class="setting-group">
-                <label for="charset">Character Set</label>
-                <select id="charset">
-                    <option value="classic">Classic</option>
-                    <option value="blocks">Blocks</option>
-                    <option value="braille">Braille</option>
-                    <option value="dense">Dense</option>
-                    <option value="simple">Simple</option>
-                    <option value="petscii">PETSCII</option>
-                </select>
+            <div class="settings-content">
+                <div class="setting-group">
+                    <label for="width">Width: <span id="widthValue">160</span></label>
+                    <input id="width" type="range" min="20" max="320" value="160">
+                </div>
+                <div class="setting-group">
+                    <label for="fps">FPS: <span id="fpsValue">12</span></label>
+                    <input id="fps" type="range" min="1" max="30" value="12">
+                </div>
+                <div class="setting-group">
+                    <label for="charset">Character Set</label>
+                    <select id="charset">
+                        <option value="classic">Classic</option>
+                        <option value="blocks">Blocks</option>
+                        <option value="braille">Braille</option>
+                        <option value="dense">Dense</option>
+                        <option value="simple">Simple</option>
+                        <option value="petscii">PETSCII</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <div class="checkbox-group">
+                        <input id="subtitle" type="checkbox">
+                        <label for="subtitle">Subtitles</label>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="settings-section">
+        <div class="settings-section collapsed" id="advancedSettings">
             <h2>Advanced</h2>
-            <div class="setting-group">
-                <label for="aspectRatio">Aspect Ratio</label>
-                <input id="aspectRatio" type="number" min="0.5" max="2.0" step="0.1" value="1.2">
-            </div>
-            <div class="checkbox-group"><input id="color" type="checkbox"><label for="color">Color</label></div>
-            <div class="checkbox-group"><input id="crt" type="checkbox"><label for="crt">CRT Mode</label></div>
-            <div class="checkbox-group"><input id="invert" type="checkbox"><label for="invert">Invert</label></div>
-            <div class="checkbox-group"><input id="edge" type="checkbox"><label for="edge">Edge Detection</label></div>
-            <div class="setting-group">
-                <label for="edgeThreshold">Edge Threshold: <span id="edgeThresholdValue">0.15</span></label>
-                <input id="edgeThreshold" type="range" min="0" max="1" step="0.01" value="0.15">
+            <div class="settings-content">
+                <div class="setting-group">
+                    <label for="aspectRatio">Aspect Ratio</label>
+                    <input id="aspectRatio" type="number" min="0.5" max="2.0" step="0.1" value="1.2">
+                </div>
+                <div class="checkbox-group"><input id="color" type="checkbox"><label for="color">Color</label></div>
+                <div class="checkbox-group"><input id="crt" type="checkbox"><label for="crt">CRT Mode</label></div>
+                <div class="checkbox-group"><input id="invert" type="checkbox"><label for="invert">Invert</label></div>
+                <div class="checkbox-group"><input id="edge" type="checkbox"><label for="edge">Edge Detection</label></div>
+                <div class="setting-group" id="edgeThresholdGroup" style="display:none">
+                    <label for="edgeThreshold">Edge Threshold: <span id="edgeThresholdValue">0.15</span></label>
+                    <input id="edgeThreshold" type="range" min="0" max="1" step="0.01" value="0.15">
+                </div>
             </div>
         </div>
 
-        <div class="settings-section">
-            <h2>Actions</h2>
-            <button id="convertBtn" disabled>Convert</button>
-            <div class="button-row">
-                <button id="exportShBtn" disabled>.sh</button>
-                <button id="exportWebmBtn" disabled>.webm</button>
-            </div>
-            <button id="exportMp4Btn" disabled>MP4 (Paid)</button>
+        <button id="convertBtn" disabled>Convert</button>
+
+        <div class="export-buttons" id="exportButtons">
+            <button id="exportShBtn" disabled>.sh</button>
+            <button id="exportWebmBtn" disabled>.webm</button>
+            <button id="copyFrameBtn" disabled>Copy</button>
         </div>
 
-        <div class="settings-section">
-            <h2>Paid Tier</h2>
-            <div class="setting-group">
-                <label for="apiBaseUrl">API Base URL</label>
-                <input id="apiBaseUrl" type="text" placeholder="https://api.example.com">
+        <div id="highResourceTools" class="high-resource-tools">
+            <button id="transcribeBtn" disabled>Auto Subtitle</button>
+            <button id="exportMp4Btn" disabled>MP4 (High Resource)</button>
+            <p class="high-resource-note">High resource actions use configured backend APIs.</p>
+        </div>
+
+        <div class="settings-section" id="accessSection">
+            <h2>Access</h2>
+            <div class="settings-content">
+                <div class="setting-group">
+                    <label for="apiBaseUrl">API Base URL</label>
+                    <input id="apiBaseUrl" type="text" placeholder="https://api.example.com">
+                </div>
+                <button id="enableHighResourceBtn">Enable High Resource Features</button>
             </div>
-            <button id="unlockBtn">Unlock Paid Features</button>
-            <button id="transcribeBtn" disabled>Auto Subtitle (Paid)</button>
-            <p class="paid-note">Requires Stripe + Whisper backend setup. Tokens are stored locally in your browser.</p>
-            <p id="freeModeNote" class="free-mode-note">Free mode enabled: payment bypassed for token issuance.</p>
         </div>
 
         <div id="status" class="status"></div>
@@ -328,10 +428,10 @@
 
     <div class="main-area">
         <div class="preview-area">
-            <pre id="previewContent" class="preview-placeholder">Select a video, then convert</pre>
+            <pre id="previewContent" class="preview-placeholder">Upload a video to begin</pre>
             <div id="subtitleOverlay" class="subtitle-overlay"></div>
         </div>
-        <div class="controls-bar">
+        <div class="controls-bar" id="playbackControls">
             <button id="playBtn" disabled>Play</button>
             <button id="pauseBtn" disabled>Pause</button>
             <button id="loopBtn" disabled>Loop</button>
@@ -352,7 +452,17 @@
         petscii: " ░▒▓█▌▐▀▄■□▪▫◆◇○●"
     };
 
+    const fallbackPresets = {
+        classic: { width: 160, fps: 12, charset: "classic", color: false, invert: false, edge: false },
+        crt: { width: 80, fps: 12, charset: "classic", color: true, invert: false, edge: false, crt_filter: true },
+        c64: { width: 40, fps: 12, charset: "petscii", color: true, invert: false, edge: false, crt_filter: true },
+        sketch: { width: 160, fps: 12, charset: "classic", color: false, invert: true, edge: true },
+        minimal: { width: 120, fps: 10, charset: "simple", color: false, invert: false, edge: false }
+    };
+    const presetOrder = ["classic", "crt", "c64", "sketch", "minimal"];
+
     const el = {
+        uploadArea: document.getElementById("uploadArea"),
         videoInput: document.getElementById("videoInput"),
         videoInfo: document.getElementById("videoInfo"),
         width: document.getElementById("width"),
@@ -360,6 +470,7 @@
         fps: document.getElementById("fps"),
         fpsValue: document.getElementById("fpsValue"),
         charset: document.getElementById("charset"),
+        subtitle: document.getElementById("subtitle"),
         aspectRatio: document.getElementById("aspectRatio"),
         color: document.getElementById("color"),
         crt: document.getElementById("crt"),
@@ -367,18 +478,23 @@
         edge: document.getElementById("edge"),
         edgeThreshold: document.getElementById("edgeThreshold"),
         edgeThresholdValue: document.getElementById("edgeThresholdValue"),
+        edgeThresholdGroup: document.getElementById("edgeThresholdGroup"),
+        presetButtons: document.getElementById("presetButtons"),
         convertBtn: document.getElementById("convertBtn"),
+        exportButtons: document.getElementById("exportButtons"),
         exportShBtn: document.getElementById("exportShBtn"),
         exportWebmBtn: document.getElementById("exportWebmBtn"),
+        copyFrameBtn: document.getElementById("copyFrameBtn"),
         exportMp4Btn: document.getElementById("exportMp4Btn"),
-        unlockBtn: document.getElementById("unlockBtn"),
         transcribeBtn: document.getElementById("transcribeBtn"),
+        highResourceTools: document.getElementById("highResourceTools"),
+        enableHighResourceBtn: document.getElementById("enableHighResourceBtn"),
         apiBaseUrl: document.getElementById("apiBaseUrl"),
-        freeModeNote: document.getElementById("freeModeNote"),
         status: document.getElementById("status"),
         error: document.getElementById("error"),
         preview: document.getElementById("previewContent"),
         subtitleOverlay: document.getElementById("subtitleOverlay"),
+        playbackControls: document.getElementById("playbackControls"),
         playBtn: document.getElementById("playBtn"),
         pauseBtn: document.getElementById("pauseBtn"),
         loopBtn: document.getElementById("loopBtn"),
@@ -387,6 +503,8 @@
     };
 
     const state = {
+        presets: {},
+        activePresetName: null,
         framesHtml: [],
         framesRaw: [],
         subtitleSegments: [],
@@ -395,18 +513,27 @@
         loop: false,
         timer: null,
         token: localStorage.getItem("video2ascii_paid_token") || "",
-        freeMode: false,
-        videoFile: null
+        tokenSource: "cached",
+        videoFile: null,
+        tokenAttempted: false
     };
 
     const savedApiBase = localStorage.getItem("video2ascii_api_base_url");
     if (savedApiBase) {
         el.apiBaseUrl.value = savedApiBase;
+    } else {
+        el.apiBaseUrl.value = window.location.origin;
     }
 
     function setStatus(message) { el.status.textContent = message; }
     function setError(message) { el.error.textContent = message; el.error.style.display = message ? "block" : "none"; }
     function clearError() { setError(""); }
+
+    function presetLabel(name) {
+        if (name === "crt") return "CRT";
+        if (name === "c64") return "C64";
+        return name.charAt(0).toUpperCase() + name.slice(1);
+    }
 
     function getSettings() {
         return {
@@ -422,11 +549,168 @@
         };
     }
 
-    function updatePaidButtons() {
-        const paid = Boolean(state.token);
-        el.transcribeBtn.disabled = !paid || !state.videoFile;
-        el.exportMp4Btn.disabled = !paid || state.framesRaw.length === 0;
-        el.freeModeNote.style.display = state.freeMode ? "block" : "none";
+    function updateHighResourceButtons() {
+        const hasToken = Boolean(state.token);
+        el.highResourceTools.classList.toggle("active", hasToken);
+        el.transcribeBtn.disabled = !hasToken || !state.videoFile;
+        el.exportMp4Btn.disabled = !hasToken || state.framesRaw.length === 0;
+        el.enableHighResourceBtn.style.display = hasToken ? "none" : "";
+    }
+
+    function applyPreset(preset) {
+        el.width.value = preset.width || 160;
+        el.widthValue.textContent = el.width.value;
+        el.fps.value = preset.fps || 12;
+        el.fpsValue.textContent = el.fps.value;
+        el.charset.value = preset.charset || "classic";
+        el.color.checked = Boolean(preset.color);
+        el.crt.checked = Boolean(preset.crt_filter);
+        el.invert.checked = Boolean(preset.invert);
+        el.edge.checked = Boolean(preset.edge);
+        el.edgeThresholdGroup.style.display = preset.edge ? "flex" : "none";
+        if (!preset.edge) {
+            el.edgeThreshold.value = "0.15";
+            el.edgeThresholdValue.textContent = "0.15";
+        }
+    }
+
+    function renderPresetButtons() {
+        const allNames = Object.keys(state.presets);
+        const orderedNames = [
+            ...presetOrder.filter((name) => allNames.includes(name)),
+            ...allNames.filter((name) => !presetOrder.includes(name)).sort()
+        ];
+        el.presetButtons.innerHTML = "";
+        for (const name of orderedNames) {
+            const btn = document.createElement("button");
+            btn.className = "preset-btn";
+            btn.dataset.preset = name;
+            btn.textContent = presetLabel(name);
+            btn.addEventListener("click", () => {
+                document.querySelectorAll(".preset-btn").forEach((node) => node.classList.remove("active"));
+                btn.classList.add("active");
+                state.activePresetName = name;
+                applyPreset(state.presets[name]);
+            });
+            el.presetButtons.appendChild(btn);
+        }
+        const first = el.presetButtons.querySelector(".preset-btn");
+        if (first) {
+            first.click();
+        }
+    }
+
+    async function fetchPresets() {
+        try {
+            const response = await fetch("/api/presets");
+            if (!response.ok) {
+                throw new Error("Preset response failed");
+            }
+            state.presets = await response.json();
+        } catch (error) {
+            console.warn("Failed to fetch presets; using fallback.", error);
+            state.presets = fallbackPresets;
+        }
+        renderPresetButtons();
+    }
+
+    async function tryAcquireFreeToken() {
+        const base = el.apiBaseUrl.value.trim();
+        if (!base) return false;
+        try {
+            const response = await fetch(`${base}/api/billing/free-token`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: "{}"
+            });
+            if (!response.ok) return false;
+            const data = await response.json();
+            if (!data.token) return false;
+            state.token = data.token;
+            state.tokenSource = "free";
+            localStorage.setItem("video2ascii_paid_token", data.token);
+            updateHighResourceButtons();
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    async function enableHighResourceFeatures() {
+        clearError();
+        const base = el.apiBaseUrl.value.trim();
+        if (!base) {
+            setError("Set API Base URL first.");
+            return;
+        }
+        if (await tryAcquireFreeToken()) {
+            setStatus("High resource features enabled.");
+            return;
+        }
+        try {
+            const response = await fetch(`${base}/api/billing/checkout`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ return_url: `${window.location.origin}${window.location.pathname}` })
+            });
+            if (!response.ok) throw new Error("Unable to create access session");
+            const data = await response.json();
+            if (!data.checkout_url) throw new Error("Missing access redirect URL");
+            window.location.href = data.checkout_url;
+        } catch (error) {
+            setError(error.message);
+        }
+    }
+
+    async function exchangeCheckoutSession(checkoutSessionId) {
+        const base = el.apiBaseUrl.value.trim();
+        if (!base) {
+            setError("Set API Base URL before exchanging session.");
+            return;
+        }
+        const response = await fetch(`${base}/api/billing/exchange`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ checkout_session_id: checkoutSessionId })
+        });
+        if (!response.ok) {
+            const txt = await response.text();
+            throw new Error(txt || "Failed to restore access session");
+        }
+        const data = await response.json();
+        if (!data.token) throw new Error("Missing token in exchange response");
+        state.token = data.token;
+        state.tokenSource = "exchange";
+        localStorage.setItem("video2ascii_paid_token", data.token);
+        updateHighResourceButtons();
+    }
+
+    async function hydrateFromQuery() {
+        const params = new URLSearchParams(window.location.search);
+        const checkoutSessionId = params.get("checkout_session_id");
+        if (!checkoutSessionId) return;
+        try {
+            await exchangeCheckoutSession(checkoutSessionId);
+            params.delete("checkout_session_id");
+            history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
+            setStatus("High resource features enabled.");
+        } catch (error) {
+            setError(`${error.message}. You can retry access session.`);
+        }
+    }
+
+    async function initToken() {
+        await hydrateFromQuery();
+        if (state.token) {
+            updateHighResourceButtons();
+            return;
+        }
+        if (state.tokenAttempted) return;
+        state.tokenAttempted = true;
+        const tokenCreated = await tryAcquireFreeToken();
+        if (tokenCreated) {
+            setStatus("High resource features enabled.");
+        }
     }
 
     function escapeHtml(text) {
@@ -486,7 +770,6 @@
         const gy = convolveGray(blurred, width, height, sobelY, 3, 1);
         const edge = new Float32Array(width * height);
         const thresholdValue = settings.edgeThreshold * 255;
-
         for (let i = 0; i < edge.length; i += 1) {
             const magnitude = Math.min(255, Math.sqrt(gx[i] * gx[i] + gy[i] * gy[i]) * 0.6);
             if (magnitude < thresholdValue) edge[i] = 0;
@@ -502,21 +785,20 @@
         const height = imageData.height;
         const src = imageData.data;
         const edgeMap = settings.edge ? detectEdges(imageData, settings) : null;
-
         if (settings.invert && !settings.color) chars = chars.split("").reverse().join("");
         const len = chars.length - 1;
         const lines = [];
         const htmlLines = [];
-
         for (let y = 0; y < height; y += 1) {
             let rawLine = "";
             let htmlLine = "";
             for (let x = 0; x < width; x += 1) {
                 const idx = (y * width + x) * 4;
                 let r = src[idx], g = src[idx + 1], b = src[idx + 2];
-
                 if (settings.invert && settings.color) {
-                    r = 255 - r; g = 255 - g; b = 255 - b;
+                    r = 255 - r;
+                    g = 255 - g;
+                    b = 255 - b;
                 }
                 if (edgeMap) {
                     const strength = edgeMap[y * width + x] / 255;
@@ -524,17 +806,17 @@
                     g = Math.floor(g * strength);
                     b = Math.floor(b * strength);
                 }
-
                 const brightness = (r + g + b) / 3;
                 const charIdx = Math.floor((brightness / 255) * len);
                 const ch = chars[Math.max(0, Math.min(len, charIdx))];
                 rawLine += ch;
-
                 if (settings.color) {
                     let outR = r, outG = g, outB = b;
                     if (settings.crt) {
                         const tinted = applyCrtTint(outR, outG, outB);
-                        outR = tinted.r; outG = tinted.g; outB = tinted.b;
+                        outR = tinted.r;
+                        outG = tinted.g;
+                        outB = tinted.b;
                     }
                     htmlLine += `<span style="color: rgb(${outR}, ${outG}, ${outB})">${escapeHtml(ch)}</span>`;
                 } else {
@@ -544,7 +826,6 @@
             lines.push(rawLine);
             htmlLines.push(htmlLine);
         }
-
         return { raw: lines.join("\n"), html: htmlLines.join("\n") };
     }
 
@@ -568,9 +849,11 @@
     }
 
     function srtTsToSeconds(value) {
-        const [hms, ms] = value.split(",");
-        const [h, m, s] = hms.split(":").map(Number);
-        return (h * 3600) + (m * 60) + s + (Number(ms) / 1000);
+        const parts = value.split(",");
+        const hms = parts[0];
+        const ms = parts[1];
+        const numbers = hms.split(":").map(Number);
+        return (numbers[0] * 3600) + (numbers[1] * 60) + numbers[2] + (Number(ms) / 1000);
     }
 
     async function loadVideoMetadata(file) {
@@ -584,7 +867,7 @@
             video.onloadedmetadata = resolve;
             video.onerror = () => reject(new Error("Failed to read video metadata"));
         });
-        return { video, url };
+        return { video: video, url: url };
     }
 
     async function seekVideo(video, seconds) {
@@ -603,67 +886,11 @@
         });
     }
 
-    async function convertVideoToAscii() {
-        if (!state.videoFile) return;
-        clearError();
-        const settings = getSettings();
-        state.fps = settings.fps;
-        setStatus("Reading video...");
-        el.convertBtn.disabled = true;
-
-        try {
-            const { video, url } = await loadVideoMetadata(state.videoFile);
-            const totalFrames = Math.max(1, Math.floor(video.duration * settings.fps));
-            const targetHeight = Math.max(1, Math.floor(video.videoHeight * settings.aspectRatio * settings.width / video.videoWidth));
-            const canvas = document.createElement("canvas");
-            canvas.width = settings.width;
-            canvas.height = targetHeight;
-            const ctx = canvas.getContext("2d", { willReadFrequently: true });
-            if (!ctx) throw new Error("Canvas context unavailable");
-
-            const htmlFrames = [];
-            const rawFrames = [];
-
-            for (let i = 0; i < totalFrames; i += 1) {
-                const t = Math.min(video.duration - 0.001, i / settings.fps);
-                await seekVideo(video, t);
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const ascii = frameToAscii(imageData, settings);
-                htmlFrames.push(ascii.html);
-                rawFrames.push(ascii.raw);
-                if ((i + 1) % 3 === 0 || i + 1 === totalFrames) {
-                    setStatus(`Converting frame ${i + 1}/${totalFrames}`);
-                    await new Promise((r) => setTimeout(r, 0));
-                }
-            }
-
-            URL.revokeObjectURL(url);
-            state.framesHtml = htmlFrames;
-            state.framesRaw = rawFrames;
-            state.currentFrame = 0;
-            renderFrame(0);
-            el.scrubber.max = Math.max(0, htmlFrames.length - 1);
-            el.scrubber.value = 0;
-            el.scrubber.disabled = false;
-            el.playBtn.disabled = false;
-            el.pauseBtn.disabled = false;
-            el.loopBtn.disabled = false;
-            el.exportShBtn.disabled = false;
-            el.exportWebmBtn.disabled = false;
-            updatePaidButtons();
-            setStatus(`Complete. ${htmlFrames.length} frames ready.`);
-        } catch (error) {
-            setError(error.message);
-            setStatus("Conversion failed.");
-        } finally {
-            el.convertBtn.disabled = false;
-        }
-    }
-
     function subtitleAt(seconds) {
         for (const seg of state.subtitleSegments) {
-            if (seconds >= seg.start && seconds < seg.end) return seg.text;
+            if (seconds >= seg.start && seconds < seg.end) {
+                return seg.text;
+            }
         }
         return "";
     }
@@ -676,7 +903,6 @@
         el.preview.classList.remove("preview-placeholder");
         el.frameInfo.textContent = `Frame ${safeIndex + 1} / ${state.framesHtml.length}`;
         el.scrubber.value = String(safeIndex);
-
         const text = subtitleAt(safeIndex / state.fps);
         if (text) {
             el.subtitleOverlay.textContent = text;
@@ -705,53 +931,133 @@
         }, delay);
     }
 
-    async function exportSh() {
-        if (!state.framesRaw.length) return;
+    async function convertVideoToAscii() {
+        if (!state.videoFile) return;
         clearError();
-        const fps = state.fps;
-        const crt = getSettings().crt;
-
-        let payload = JSON.stringify({ frames: state.framesRaw, fps, crt });
-        let encoding = "plain";
-        if ("CompressionStream" in window) {
-            const cs = new CompressionStream("gzip");
-            const writer = cs.writable.getWriter();
-            writer.write(new TextEncoder().encode(payload));
-            writer.close();
-            const compressed = await new Response(cs.readable).arrayBuffer();
-            payload = btoa(String.fromCharCode(...new Uint8Array(compressed)));
-            encoding = "gzip";
-        } else {
-            payload = btoa(unescape(encodeURIComponent(payload)));
+        const settings = getSettings();
+        state.fps = settings.fps;
+        setStatus("Reading video...");
+        el.convertBtn.disabled = true;
+        try {
+            const metadata = await loadVideoMetadata(state.videoFile);
+            const video = metadata.video;
+            const url = metadata.url;
+            const totalFrames = Math.max(1, Math.floor(video.duration * settings.fps));
+            const targetHeight = Math.max(1, Math.floor(video.videoHeight * settings.aspectRatio * settings.width / video.videoWidth));
+            const canvas = document.createElement("canvas");
+            canvas.width = settings.width;
+            canvas.height = targetHeight;
+            const ctx = canvas.getContext("2d", { willReadFrequently: true });
+            if (!ctx) throw new Error("Canvas context unavailable");
+            const htmlFrames = [];
+            const rawFrames = [];
+            for (let i = 0; i < totalFrames; i += 1) {
+                const t = Math.min(video.duration - 0.001, i / settings.fps);
+                await seekVideo(video, t);
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const ascii = frameToAscii(imageData, settings);
+                htmlFrames.push(ascii.html);
+                rawFrames.push(ascii.raw);
+                if ((i + 1) % 3 === 0 || i + 1 === totalFrames) {
+                    setStatus(`Converting frame ${i + 1}/${totalFrames}`);
+                    await new Promise((resolve) => setTimeout(resolve, 0));
+                }
+            }
+            URL.revokeObjectURL(url);
+            state.framesHtml = htmlFrames;
+            state.framesRaw = rawFrames;
+            state.subtitleSegments = [];
+            state.currentFrame = 0;
+            renderFrame(0);
+            el.scrubber.max = Math.max(0, htmlFrames.length - 1);
+            el.scrubber.value = "0";
+            el.scrubber.disabled = false;
+            el.playBtn.disabled = false;
+            el.pauseBtn.disabled = false;
+            el.loopBtn.disabled = false;
+            el.exportShBtn.disabled = false;
+            el.exportWebmBtn.disabled = false;
+            el.copyFrameBtn.disabled = false;
+            el.playbackControls.style.display = "flex";
+            el.exportButtons.style.display = "flex";
+            updateHighResourceButtons();
+            setStatus(`Complete. ${htmlFrames.length} frames ready.`);
+        } catch (error) {
+            setError(error.message);
+            setStatus("Conversion failed.");
+        } finally {
+            el.convertBtn.disabled = false;
         }
+    }
 
-        const script = `#!/usr/bin/env bash
-set -euo pipefail
-tmp="$(mktemp)"
-cleanup(){ rm -f "$tmp"; }
-trap cleanup EXIT
-base64 -d <<'B64' > "$tmp.gz"
-${payload}
-B64
-python3 - <<'PY'
-import base64, gzip, json, os, subprocess, tempfile, time, sys
-payload = "${payload}"
-encoding = "${encoding}"
-raw = base64.b64decode(payload)
-if encoding == "gzip":
-    raw = gzip.decompress(raw)
-data = json.loads(raw.decode("utf-8"))
-frames = data["frames"]
-fps = data["fps"]
-delay = 1.0 / max(1, fps)
-for frame in frames:
-    os.system("clear")
-    print(frame)
-    time.sleep(delay)
-PY
-`;
-        downloadBlob(new Blob([script], { type: "application/x-sh" }), "video2ascii.sh");
-        setStatus("Exported .sh file.");
+    async function transcribeHighResource() {
+        clearError();
+        const base = el.apiBaseUrl.value.trim();
+        if (!base || !state.videoFile || !state.token) {
+            setError("Enable high resource features before generating subtitles.");
+            return;
+        }
+        setStatus("Uploading audio for transcription...");
+        try {
+            const body = new FormData();
+            body.append("file", state.videoFile);
+            const response = await fetch(`${base}/api/transcribe`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${state.token}` },
+                body: body
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || "Transcription failed");
+            }
+            const data = await response.json();
+            if (!data.srt) throw new Error("No SRT returned");
+            state.subtitleSegments = readSrt(data.srt);
+            setStatus(`Loaded ${state.subtitleSegments.length} subtitle segments.`);
+            renderFrame(state.currentFrame);
+        } catch (error) {
+            setError(error.message);
+            setStatus("Transcription failed.");
+        }
+    }
+
+    async function exportMp4HighResource() {
+        clearError();
+        const base = el.apiBaseUrl.value.trim();
+        if (!base || !state.token) {
+            setError("Enable high resource features before exporting MP4.");
+            return;
+        }
+        setStatus("Sending frames for MP4 export...");
+        try {
+            const settings = getSettings();
+            const response = await fetch(`${base}/api/export/mp4`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${state.token}`
+                },
+                body: JSON.stringify({
+                    frames: state.framesRaw,
+                    fps: state.fps,
+                    color: settings.color,
+                    crt: settings.crt,
+                    charset: settings.charset,
+                    width: settings.width
+                })
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || "MP4 export failed");
+            }
+            const blob = await response.blob();
+            downloadBlob(blob, "video2ascii.mp4");
+            setStatus("Exported MP4.");
+        } catch (error) {
+            setError(error.message);
+            setStatus("MP4 export failed.");
+        }
     }
 
     async function exportWebm() {
@@ -778,8 +1084,8 @@ PY
                     })
                 });
                 if (!response.ok) {
-                    const txt = await response.text();
-                    throw new Error(txt || "WebM export failed");
+                    const text = await response.text();
+                    throw new Error(text || "WebM export failed");
                 }
                 const blob = await response.blob();
                 downloadBlob(blob, "video2ascii.webm");
@@ -789,12 +1095,10 @@ PY
                 setError(`Backend WebM failed, falling back to local render: ${error.message}`);
             }
         }
-
         if (!("MediaRecorder" in window)) {
             setError("WebM export not supported in this browser and backend export is unavailable.");
             return;
         }
-
         const canvas = document.createElement("canvas");
         canvas.width = 1280;
         canvas.height = 720;
@@ -803,20 +1107,17 @@ PY
             setError("Canvas unavailable for WebM export.");
             return;
         }
-
         const stream = canvas.captureStream(state.fps);
         const chunks = [];
         const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp9" });
         recorder.ondataavailable = (event) => {
             if (event.data && event.data.size) chunks.push(event.data);
         };
-
         recorder.start();
         const pre = document.createElement("pre");
         pre.style.font = "14px 'Courier New', monospace";
         pre.style.whiteSpace = "pre";
         pre.style.color = "#fff";
-
         for (let i = 0; i < state.framesHtml.length; i += 1) {
             ctx.fillStyle = "#000";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -826,20 +1127,62 @@ PY
             for (let y = 0; y < lines.length; y += 1) {
                 ctx.fillText(lines[y], 20, 30 + (y * 14));
             }
-            await new Promise((r) => setTimeout(r, Math.floor(1000 / state.fps)));
+            await new Promise((resolve) => setTimeout(resolve, Math.floor(1000 / state.fps)));
             if ((i + 1) % 5 === 0 || i + 1 === state.framesHtml.length) {
                 setStatus(`WebM render ${i + 1}/${state.framesHtml.length}`);
             }
         }
-
         await new Promise((resolve) => {
             recorder.onstop = resolve;
             recorder.stop();
         });
-
         const blob = new Blob(chunks, { type: "video/webm" });
         downloadBlob(blob, "video2ascii.webm");
         setStatus("Exported .webm file.");
+    }
+
+    async function exportSh() {
+        if (!state.framesRaw.length) return;
+        clearError();
+        const settings = getSettings();
+        let payload = JSON.stringify({ frames: state.framesRaw, fps: state.fps, crt: settings.crt });
+        let encoding = "plain";
+        if ("CompressionStream" in window) {
+            const cs = new CompressionStream("gzip");
+            const writer = cs.writable.getWriter();
+            writer.write(new TextEncoder().encode(payload));
+            writer.close();
+            const compressed = await new Response(cs.readable).arrayBuffer();
+            payload = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(compressed))));
+            encoding = "gzip";
+        } else {
+            payload = btoa(unescape(encodeURIComponent(payload)));
+        }
+        const script = `#!/usr/bin/env bash
+set -euo pipefail
+python3 - <<'PY'
+import base64
+import gzip
+import json
+import os
+import time
+payload = "${payload}"
+encoding = "${encoding}"
+raw = base64.b64decode(payload)
+if encoding == "gzip":
+    raw = gzip.decompress(raw)
+data = json.loads(raw.decode("utf-8"))
+frames = data["frames"]
+fps = data["fps"]
+delay = 1.0 / max(1, fps)
+for frame in frames:
+    os.system("clear")
+    print(frame)
+    time.sleep(delay)
+PY
+`;
+        downloadBlob(new Blob([script], { type: "application/x-sh" }), "video2ascii.sh");
+        setStatus("Exported .sh file.");
     }
 
     function downloadBlob(blob, filename) {
@@ -851,153 +1194,34 @@ PY
         URL.revokeObjectURL(url);
     }
 
-    async function unlockPaid() {
-        clearError();
-        const base = el.apiBaseUrl.value.trim();
-        if (!base) {
-            setError("Set API Base URL first.");
-            return;
-        }
-        try {
-            const freeTokenResponse = await fetch(`${base}/api/billing/free-token`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: "{}"
-            });
-            if (freeTokenResponse.ok) {
-                const freeData = await freeTokenResponse.json();
-                if (!freeData.token) throw new Error("Missing token in free-mode response");
-                state.token = freeData.token;
-                state.freeMode = true;
-                localStorage.setItem("video2ascii_paid_token", freeData.token);
-                setStatus("Free mode token issued. Paid features unlocked without checkout.");
-                updatePaidButtons();
-                return;
-            }
-
-            const response = await fetch(`${base}/api/billing/checkout`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ return_url: `${window.location.origin}${window.location.pathname}` })
-            });
-            if (!response.ok) throw new Error("Unable to create checkout session");
-            const data = await response.json();
-            if (!data.checkout_url) throw new Error("Missing checkout_url");
-            window.location.href = data.checkout_url;
-        } catch (error) {
-            setError(error.message);
-        }
+    function copyCurrentFrame() {
+        if (!state.framesRaw.length) return;
+        navigator.clipboard.writeText(state.framesRaw[state.currentFrame] || "");
+        setStatus("Frame copied.");
     }
 
-    async function exchangeCheckoutSession(checkoutSessionId) {
-        const base = el.apiBaseUrl.value.trim();
-        if (!base) {
-            setError("Set API Base URL before exchanging checkout session.");
-            return;
-        }
-        const response = await fetch(`${base}/api/billing/exchange`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ checkout_session_id: checkoutSessionId })
+    document.querySelectorAll(".settings-section h2").forEach((header) => {
+        header.addEventListener("click", () => {
+            header.parentElement.classList.toggle("collapsed");
         });
-        if (!response.ok) {
-            const txt = await response.text();
-            throw new Error(txt || "Failed to exchange checkout session");
-        }
-        const data = await response.json();
-        if (!data.token) throw new Error("Missing token in exchange response");
-        state.token = data.token;
-        state.freeMode = false;
-        localStorage.setItem("video2ascii_paid_token", data.token);
-    }
+    });
 
-    async function transcribePaid() {
-        clearError();
-        const base = el.apiBaseUrl.value.trim();
-        if (!base || !state.videoFile || !state.token) {
-            setError("Paid transcription requires API URL, video file, and paid token.");
-            return;
+    el.uploadArea.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        el.uploadArea.classList.add("dragover");
+    });
+    el.uploadArea.addEventListener("dragleave", () => {
+        el.uploadArea.classList.remove("dragover");
+    });
+    el.uploadArea.addEventListener("drop", (event) => {
+        event.preventDefault();
+        el.uploadArea.classList.remove("dragover");
+        const files = event.dataTransfer.files;
+        if (files.length) {
+            el.videoInput.files = files;
+            el.videoInput.dispatchEvent(new Event("change"));
         }
-        setStatus("Uploading audio for transcription...");
-        try {
-            const body = new FormData();
-            body.append("file", state.videoFile);
-            const response = await fetch(`${base}/api/transcribe`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${state.token}` },
-                body
-            });
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || "Transcription failed");
-            }
-            const data = await response.json();
-            if (!data.srt) throw new Error("No SRT returned");
-            state.subtitleSegments = readSrt(data.srt);
-            setStatus(`Loaded ${state.subtitleSegments.length} subtitle segments.`);
-            renderFrame(state.currentFrame);
-        } catch (error) {
-            setError(error.message);
-            setStatus("Transcription failed.");
-        }
-    }
-
-    async function exportMp4Paid() {
-        clearError();
-        const base = el.apiBaseUrl.value.trim();
-        if (!base || !state.token) {
-            setError("MP4 export requires paid API setup.");
-            return;
-        }
-        setStatus("Sending frames for MP4 export...");
-        try {
-            const settings = getSettings();
-            const response = await fetch(`${base}/api/export/mp4`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${state.token}`
-                },
-                body: JSON.stringify({
-                    frames: state.framesRaw,
-                    fps: state.fps,
-                    color: settings.color,
-                    crt: settings.crt,
-                    charset: settings.charset,
-                    width: settings.width
-                })
-            });
-            if (!response.ok) {
-                const txt = await response.text();
-                throw new Error(txt || "MP4 export failed");
-            }
-            const blob = await response.blob();
-            downloadBlob(blob, "video2ascii.mp4");
-            setStatus("Exported MP4.");
-        } catch (error) {
-            setError(error.message);
-            setStatus("MP4 export failed.");
-        }
-    }
-
-    function hydrateFromQuery() {
-        const params = new URLSearchParams(window.location.search);
-        const checkoutSessionId = params.get("checkout_session_id");
-        const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
-        if (checkoutSessionId) {
-            exchangeCheckoutSession(checkoutSessionId)
-                .then(() => {
-                    params.delete("checkout_session_id");
-                    history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
-                    setStatus("Paid features unlocked.");
-                    updatePaidButtons();
-                })
-                .catch((error) => setError(`${error.message}. You can retry unlock; checkout session was preserved.`));
-        } else {
-            history.replaceState({}, "", next);
-        }
-        updatePaidButtons();
-    }
+    });
 
     el.videoInput.addEventListener("change", () => {
         const file = el.videoInput.files[0];
@@ -1005,20 +1229,27 @@ PY
         state.videoFile = file;
         el.videoInfo.textContent = `${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
         el.convertBtn.disabled = false;
-        updatePaidButtons();
+        updateHighResourceButtons();
     });
     el.apiBaseUrl.addEventListener("change", () => {
         localStorage.setItem("video2ascii_api_base_url", el.apiBaseUrl.value.trim());
+        initToken();
     });
     el.width.addEventListener("input", () => { el.widthValue.textContent = el.width.value; });
     el.fps.addEventListener("input", () => { el.fpsValue.textContent = el.fps.value; });
-    el.edgeThreshold.addEventListener("input", () => { el.edgeThresholdValue.textContent = el.edgeThreshold.value; });
+    el.edge.addEventListener("change", () => {
+        el.edgeThresholdGroup.style.display = el.edge.checked ? "flex" : "none";
+    });
+    el.edgeThreshold.addEventListener("input", () => {
+        el.edgeThresholdValue.textContent = el.edgeThreshold.value;
+    });
     el.convertBtn.addEventListener("click", convertVideoToAscii);
     el.exportShBtn.addEventListener("click", exportSh);
     el.exportWebmBtn.addEventListener("click", exportWebm);
-    el.exportMp4Btn.addEventListener("click", exportMp4Paid);
-    el.unlockBtn.addEventListener("click", unlockPaid);
-    el.transcribeBtn.addEventListener("click", transcribePaid);
+    el.copyFrameBtn.addEventListener("click", copyCurrentFrame);
+    el.exportMp4Btn.addEventListener("click", exportMp4HighResource);
+    el.transcribeBtn.addEventListener("click", transcribeHighResource);
+    el.enableHighResourceBtn.addEventListener("click", enableHighResourceFeatures);
 
     el.playBtn.addEventListener("click", playPlayback);
     el.pauseBtn.addEventListener("click", pausePlayback);
@@ -1031,10 +1262,12 @@ PY
         renderFrame(parseInt(event.target.value, 10));
     });
 
-    hydrateFromQuery();
     el.widthValue.textContent = el.width.value;
     el.fpsValue.textContent = el.fps.value;
     el.edgeThresholdValue.textContent = el.edgeThreshold.value;
+    fetchPresets();
+    updateHighResourceButtons();
+    initToken();
 })();
 </script>
 </body>
