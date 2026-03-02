@@ -505,6 +505,7 @@
             <div class="export-buttons" id="exportButtons" style="display: none;">
                 <button id="exportShBtn">.sh</button>
                 <button id="exportMp4Btn">.mp4</button>
+                <button id="exportWebmBtn">.webm</button>
                 <button id="copyFrameBtn">Copy</button>
             </div>
         </div>
@@ -1112,6 +1113,11 @@
         document.getElementById('exportMp4Btn').addEventListener('click', async () => {
             if (!currentJobId) return;
             window.location.href = `/api/jobs/${currentJobId}/export/mp4`;
+        });
+
+        document.getElementById('exportWebmBtn').addEventListener('click', async () => {
+            if (!currentJobId) return;
+            window.location.href = `/api/jobs/${currentJobId}/export/webm`;
         });
         
         document.getElementById('copyFrameBtn').addEventListener('click', () => {

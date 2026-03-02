@@ -1,4 +1,4 @@
-"""Export ASCII frames as MP4 video."""
+"""Export ASCII frames as video files via ffmpeg."""
 
 import logging
 import re
@@ -325,22 +325,22 @@ def export_mp4(
     subtitle_path: Optional[Path] = None,
     font_override: Optional[str] = None,
 ) -> None:
-    """Export ASCII frames as MP4 video.
+    """Export ASCII frames as video file.
 
     Args:
         frames: List of ASCII art frame strings
-        output_path: Path to output MP4 file
+        output_path: Path to output video file
         fps: Frames per second
         color: Whether frames contain ANSI color codes
         color_scheme: Optional ColorScheme for tinted rendering
         work_dir: Working directory for temporary rendered images
         charset: Character set name
         target_width: Target width in pixels for rendered frames
-        codec: Video codec to use ('h265', 'h264', or 'prores422')
+        codec: Video codec to use ('h265', 'h264', 'vp9', or 'prores422')
         subtitle_path: Optional path to SRT file to burn into video
         font_override: Optional font name or path for rendering
     """
-    logger.info("Exporting %d frames to MP4: %s", len(frames), output_path)
+    logger.info("Exporting %d frames to video: %s", len(frames), output_path)
     logger.debug(
         "MP4 export settings: fps=%d, color=%s, color_scheme=%s, charset=%s, "
         "target_width=%d, codec=%s, font_override=%s",
@@ -383,7 +383,7 @@ def export_mp4(
 
     print(f"  Rendered {len(frames)}/{len(frames)} frames")
 
-    print(f"Creating MP4: {output_path}…")
+    print(f"Creating video: {output_path}…")
 
     # Use ffmpeg to create MP4 from rendered images
     pattern = str(render_dir / "frame_%06d.png")
@@ -412,6 +412,15 @@ def export_mp4(
             "-pix_fmt", "yuv420p",
             "-crf", "18",
             "-preset", "medium",
+        ])
+    elif codec == "vp9":
+        logger.debug("Using VP9 codec for WebM")
+        ffmpeg_cmd.extend([
+            "-c:v", "libvpx-vp9",
+            "-pix_fmt", "yuv420p",
+            "-crf", "30",
+            "-b:v", "0",
+            "-deadline", "good",
         ])
     else:
         logger.debug("Using H.264 codec")

@@ -1,15 +1,20 @@
 """FastAPI web application for video2ascii."""
 
 import asyncio
+import base64
+import hashlib
+import hmac
 import json
 import logging
+import os
 import shutil
 import tempfile
+import time
 import uuid
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -42,6 +47,69 @@ class JobStatus:
 
 
 jobs: dict[str, dict] = {}
+
+_FREE_MODE_TRUE_VALUES = {"1", "true", "yes", "on"}
+
+
+def _is_free_mode() -> bool:
+    return os.environ.get("VIDEO2ASCII_FREE_MODE", "").strip().lower() in _FREE_MODE_TRUE_VALUES
+
+
+def _token_secret() -> str:
+    return os.environ.get("VIDEO2ASCII_FREE_ISSUER_SECRET", "").strip()
+
+
+def _token_ttl_seconds() -> int:
+    raw = os.environ.get("VIDEO2ASCII_FREE_TOKEN_TTL_SECONDS", "86400").strip()
+    try:
+        return max(60, int(raw))
+    except ValueError:
+        return 86400
+
+
+def _allowed_free_token_origins() -> list[str]:
+    raw = os.environ.get("VIDEO2ASCII_FREE_ALLOWED_ORIGINS", "").strip()
+    if not raw:
+        return []
+    return [v.strip() for v in raw.split(",") if v.strip()]
+
+
+def _mint_signed_token(tier: str = "free") -> str:
+    secret = _token_secret()
+    if not secret:
+        raise HTTPException(status_code=500, detail="VIDEO2ASCII_FREE_ISSUER_SECRET is not configured")
+    now_ms = int(time.time() * 1000)
+    payload = {
+        "tier": tier,
+        "iat": now_ms,
+        "exp": now_ms + (_token_ttl_seconds() * 1000),
+        "sid": f"free-{uuid.uuid4()}",
+    }
+    payload_b64 = base64.b64encode(json.dumps(payload).encode("utf-8")).decode("utf-8")
+    signature = hmac.new(secret.encode("utf-8"), payload_b64.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{payload_b64}.{signature}"
+
+
+def _verify_bearer_token(auth_header: Optional[str]) -> bool:
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return False
+    secret = _token_secret()
+    if not secret:
+        return False
+    token = auth_header.replace("Bearer ", "", 1).strip()
+    parts = token.split(".")
+    if len(parts) != 2:
+        return False
+    payload_b64, signature = parts
+    expected = hmac.new(secret.encode("utf-8"), payload_b64.encode("utf-8"), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        return False
+    try:
+        payload = json.loads(base64.b64decode(payload_b64 + "===").decode("utf-8"))
+    except Exception:
+        return False
+    exp = payload.get("exp")
+    return isinstance(exp, (int, float)) and exp > int(time.time() * 1000)
 
 
 async def _process_video_async(
@@ -135,10 +203,87 @@ async def get_presets():
     return serialize_presets()
 
 
+@app.get("/public", response_class=HTMLResponse)
+async def public_index():
+    """Serve the static public deployment page."""
+    public_path = static_dir / "public.html"
+    if not public_path.exists():
+        raise HTTPException(status_code=404, detail="public.html not found")
+    with open(public_path, "r") as f:
+        return HTMLResponse(content=f.read())
+
+
 @app.get("/api/fonts")
 async def get_fonts(charset: str = "classic"):
     """Return font names available for a given charset."""
     return {"fonts": list_available_fonts(charset)}
+
+
+@app.post("/api/billing/free-token")
+async def get_free_token(request: Request):
+    """Issue a signed access token in free mode."""
+    if not _is_free_mode():
+        raise HTTPException(status_code=404, detail="Free mode is not enabled")
+
+    allowed = _allowed_free_token_origins()
+    origin = request.headers.get("origin", "")
+    if allowed and origin and origin not in allowed:
+        raise HTTPException(status_code=403, detail="Origin not allowed")
+
+    token = _mint_signed_token("free")
+    return {"token": token, "mode": "free"}
+
+
+@app.post("/api/transcribe")
+async def transcribe_video(
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(default=None),
+):
+    """Transcribe uploaded media and return SRT (token required)."""
+    if not _verify_bearer_token(authorization):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    provider = os.environ.get("VIDEO2ASCII_TRANSCRIBE_PROVIDER", "openai").strip().lower()
+    if provider == "openai":
+        raise HTTPException(
+            status_code=501,
+            detail="openai provider is not implemented in web app; set VIDEO2ASCII_TRANSCRIBE_PROVIDER=local",
+        )
+    if provider != "local":
+        raise HTTPException(status_code=400, detail="Unsupported transcription provider")
+
+    srt_text = await _transcribe_local_upload(file)
+    return {"srt": srt_text}
+
+
+@app.post("/api/transcribe/local")
+async def transcribe_video_local_internal(
+    file: UploadFile = File(...),
+    x_transcribe_secret: Optional[str] = Header(default=None),
+):
+    """Internal local transcription endpoint for proxying from worker/local mode."""
+    expected_secret = os.environ.get("VIDEO2ASCII_LOCAL_TRANSCRIBE_SECRET", "").strip()
+    if expected_secret and x_transcribe_secret != expected_secret:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    srt_text = await _transcribe_local_upload(file)
+    return {"srt": srt_text}
+
+
+async def _transcribe_local_upload(file: UploadFile) -> str:
+    """Save uploaded media and generate SRT with local whisper toolchain."""
+    work_dir = Path(tempfile.mkdtemp(prefix="ascii_transcribe_"))
+    media_path = work_dir / (file.filename or "upload.bin")
+    try:
+        with open(media_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+        loop = asyncio.get_event_loop()
+        srt_path = await loop.run_in_executor(None, generate_srt, media_path, work_dir)
+        if not srt_path or not Path(srt_path).exists():
+            raise HTTPException(status_code=500, detail="Failed to generate subtitles")
+        return Path(srt_path).read_text(encoding="utf-8")
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
 
 
 @app.post("/api/convert")
@@ -414,6 +559,44 @@ async def export_mp4_endpoint(job_id: str):
         str(export_path),
         media_type="video/mp4",
         filename="video2ascii.mp4",
+    )
+
+
+@app.get("/api/jobs/{job_id}/export/webm")
+async def export_webm_endpoint(job_id: str):
+    """Export as WebM video."""
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job = jobs[job_id]
+    if job["status"] != JobStatus.COMPLETED:
+        status = job["status"]
+        raise HTTPException(status_code=400, detail=f"Job not completed (status: {status})")
+
+    if job["frames"] is None:
+        raise HTTPException(status_code=500, detail="Frames not available")
+
+    export_path = job["work_dir"] / "export.webm"
+    target_width = min(1920, max(1280, job["params"]["width"] * 16))
+
+    export_mp4(
+        job["frames"],
+        export_path,
+        job["params"]["fps"],
+        color=job["params"]["color"],
+        color_scheme=job.get("color_scheme"),
+        work_dir=job["work_dir"],
+        charset=job["params"]["charset"],
+        target_width=target_width,
+        codec="vp9",
+        subtitle_path=job.get("subtitle_srt_path"),
+        font_override=job["params"].get("font"),
+    )
+
+    return FileResponse(
+        str(export_path),
+        media_type="video/webm",
+        filename="video2ascii.webm",
     )
 
 
