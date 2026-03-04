@@ -33,8 +33,10 @@ def _ansi_bg(r: int, g: int, b: int) -> str:
 ANSI_FG_TRUECOLOR_RE = re.compile(r"\033\[38;2;(\d+);(\d+);(\d+)m")
 
 
-def _blend_frame_ansi_colors(frame: str, color_scheme: ColorScheme) -> str:
+def _blend_frame_ansi_colors(frame: str, color_scheme: Optional[ColorScheme]) -> str:
     """Blend all 24-bit foreground ANSI colors in a frame with tint."""
+    if color_scheme is None:
+        return frame
 
     def repl(match: re.Match) -> str:
         r, g, b = map(int, match.groups())
@@ -159,7 +161,8 @@ class TerminalPlayer:
 
                     # Preserve frame-local colors while blending them toward the
                     # selected tint, so presets also affect colorized content.
-                    frame = _blend_frame_ansi_colors(frame, color_scheme)
+                    if color_scheme:
+                        frame = _blend_frame_ansi_colors(frame, color_scheme)
 
                     print(frame, end="", flush=True)
                     

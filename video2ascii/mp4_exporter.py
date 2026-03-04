@@ -324,6 +324,7 @@ def export_mp4(
     codec: str = "h265",
     subtitle_path: Optional[Path] = None,
     font_override: Optional[str] = None,
+    display_aspect_ratio: Optional[str] = None,
 ) -> None:
     """Export ASCII frames as video file.
 
@@ -339,12 +340,14 @@ def export_mp4(
         codec: Video codec to use ('h265', 'h264', 'vp9', or 'prores422')
         subtitle_path: Optional path to SRT file to burn into video
         font_override: Optional font name or path for rendering
+        display_aspect_ratio: Optional output DAR metadata (e.g. "16:9")
     """
     logger.info("Exporting %d frames to video: %s", len(frames), output_path)
     logger.debug(
         "MP4 export settings: fps=%d, color=%s, color_scheme=%s, charset=%s, "
-        "target_width=%d, codec=%s, font_override=%s",
+        "target_width=%d, codec=%s, font_override=%s, display_aspect_ratio=%s",
         fps, color, color_scheme, charset, target_width, codec, font_override,
+        display_aspect_ratio,
     )
 
     # Resolve font once for all frames
@@ -430,6 +433,8 @@ def export_mp4(
             "-crf", "18",
         ])
 
+    vf_filters = []
+
     # Burn subtitles into video if SRT path is provided
     if subtitle_path and subtitle_path.exists():
         escaped_path = _escape_ffmpeg_path(subtitle_path)
@@ -439,8 +444,15 @@ def export_mp4(
             f":force_style='Fontname={font_name},FontSize=24"
             f",PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,Outline=2'"
         )
-        ffmpeg_cmd.extend(["-vf", subtitle_filter])
+        vf_filters.append(subtitle_filter)
         logger.info("Burning subtitles into MP4: %s (font: %s)", subtitle_path.name, font_name)
+
+    if display_aspect_ratio:
+        vf_filters.append(f"setdar={display_aspect_ratio.replace(':', '/')}")
+        logger.debug("Applying output display aspect ratio via setdar: %s", display_aspect_ratio)
+
+    if vf_filters:
+        ffmpeg_cmd.extend(["-vf", ",".join(vf_filters)])
 
     ffmpeg_cmd.append(str(output_path))
 

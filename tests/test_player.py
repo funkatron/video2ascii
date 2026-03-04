@@ -216,6 +216,23 @@ class TestTerminalPlayer:
         assert "\033[38;2;150;89;174m" in output_str
         assert "\033[38;2;255;0;0m" not in output_str
 
+    def test_play_colorized_frame_without_scheme_does_not_crash(self):
+        """Colorized frames should play unchanged when no scheme is set."""
+        frame = "\033[38;2;255;0;0mX\033[0m"
+        printed_output = []
+
+        def mock_print(*args, **kwargs):
+            printed_output.append("".join(str(a) for a in args))
+
+        with patch("builtins.print", side_effect=mock_print):
+            with patch("time.sleep"):
+                with patch("signal.signal"):
+                    player = TerminalPlayer([frame], fps=12, speed=100.0)
+                    player.play(color_scheme=None, loop=False, progress=False)
+
+        output_str = "".join(printed_output)
+        assert "\033[38;2;255;0;0m" in output_str
+
 
 class TestPlayFunction:
     """Tests for play function."""

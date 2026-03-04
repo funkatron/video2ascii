@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from video2ascii.cli import main, parse_args
+from video2ascii.cli import main, parse_args, probe_display_aspect_ratio
 from video2ascii.presets import CRT_GREEN, C64_BLUE
 
 # ---------------------------------------------------------------------------
@@ -272,6 +272,7 @@ class TestMain:
                         mock_export.assert_called_once()
                         call_kwargs = mock_export.call_args[1]
                         assert call_kwargs.get("codec") == "prores422" or "prores422" in str(mock_export.call_args)
+                        assert "display_aspect_ratio" in call_kwargs
 
     def test_export_webm_mode(self, temp_work_dir, sample_ascii_frame):
         """Test export_webm mode."""
@@ -531,3 +532,39 @@ class TestFontFlag:
 
                         call_kwargs = mock_export.call_args[1]
                         assert call_kwargs["font_override"] == "/path/to/font.ttf"
+
+
+class TestProbeDisplayAspectRatio:
+    """Tests for input display aspect ratio probing."""
+
+    def test_probe_uses_display_aspect_ratio_when_present(self, temp_work_dir):
+        """DAR from ffprobe should be parsed and returned."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+
+        mock_completed = MagicMock()
+        mock_completed.stdout = (
+            '{"streams":[{"display_aspect_ratio":"16:9","width":1920,'
+            '"height":1080,"sample_aspect_ratio":"1:1"}]}'
+        )
+
+        with patch("video2ascii.cli.subprocess.run", return_value=mock_completed):
+            dar = probe_display_aspect_ratio(test_video)
+
+        assert dar == "16:9"
+
+    def test_probe_falls_back_to_width_height_and_sar(self, temp_work_dir):
+        """When DAR is N/A, width/height*SAR should be used."""
+        test_video = temp_work_dir / "test.mp4"
+        test_video.touch()
+
+        mock_completed = MagicMock()
+        mock_completed.stdout = (
+            '{"streams":[{"display_aspect_ratio":"N/A","width":1440,'
+            '"height":1080,"sample_aspect_ratio":"4:3"}]}'
+        )
+
+        with patch("video2ascii.cli.subprocess.run", return_value=mock_completed):
+            dar = probe_display_aspect_ratio(test_video)
+
+        assert dar == "16:9"
