@@ -27,4 +27,4 @@ def main(port: int = 9999):
     print(f"Open your browser to: {url}")
     print("Press Ctrl+C to stop the server")
 
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

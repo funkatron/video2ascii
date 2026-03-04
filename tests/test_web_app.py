@@ -27,6 +27,13 @@ class TestWebApp:
         assert "text/html" in response.headers["content-type"]
         assert "video2ascii" in response.text.lower()
 
+    def test_public_route(self):
+        """Test public route serves public deployment HTML."""
+        response = client.get("/public")
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+        assert "<title>video2ascii</title>" in response.text.lower()
+
     def test_convert_endpoint_missing_file(self):
         """Test convert endpoint without file."""
         response = client.post("/api/convert")
@@ -282,6 +289,40 @@ class TestWebApp:
         result = response.json()
         assert "subtitle_segments" not in result
 
+    @patch("video2ascii.web.app.export_mp4")
+    def test_export_webm_success(self, mock_export_mp4, temp_work_dir):
+        """Test WebM export endpoint returns file when job completed."""
+        job_id = "test-job-webm"
+        export_path = temp_work_dir / "export.webm"
+        export_path.write_bytes(b"WEBM")
+
+        jobs[job_id] = {
+            "status": JobStatus.COMPLETED,
+            "frames": ["Frame 1"],
+            "work_dir": temp_work_dir,
+            "params": {
+                "fps": 12,
+                "color": False,
+                "crt": False,
+                "charset": "classic",
+                "width": 160,
+                "font": None,
+            },
+            "subtitle_srt_path": None,
+        }
+
+        response = client.get(f"/api/jobs/{job_id}/export/webm")
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("video/webm")
+        assert response.headers["content-disposition"].endswith('filename="video2ascii.webm"')
+        mock_export_mp4.assert_called_once()
+        assert mock_export_mp4.call_args[1]["codec"] == "vp9"
+
+    def test_export_webm_not_found(self):
+        """Test WebM export endpoint for missing job."""
+        response = client.get("/api/jobs/nonexistent/export/webm")
+        assert response.status_code == 404
+
     def test_fonts_endpoint_petscii(self):
         """Test /api/fonts returns font list for petscii."""
         with patch("video2ascii.web.app.list_available_fonts", return_value=["PetMe64", "PetMe128"]):
@@ -429,3 +470,75 @@ class TestPresetsEndpoint:
         assert params["edge"] is False
         assert params["crt_filter"] is True
         assert params["default_crt_playback"] is False
+
+
+class TestFreeModeEndpoints:
+    """Tests for free-mode token and transcription endpoints."""
+
+    def setup_method(self):
+        jobs.clear()
+
+    def test_free_token_disabled_returns_404(self, monkeypatch):
+        monkeypatch.delenv("VIDEO2ASCII_FREE_MODE", raising=False)
+        response = client.post("/api/billing/free-token")
+        assert response.status_code == 404
+
+    def test_free_token_enabled_returns_token(self, monkeypatch):
+        monkeypatch.setenv("VIDEO2ASCII_FREE_MODE", "true")
+        monkeypatch.setenv("VIDEO2ASCII_FREE_ISSUER_SECRET", "free-secret")
+        response = client.post("/api/billing/free-token")
+        assert response.status_code == 200
+        body = response.json()
+        assert "token" in body
+        assert body["mode"] == "free"
+
+    def test_transcribe_requires_bearer_token(self, monkeypatch):
+        monkeypatch.setenv("VIDEO2ASCII_FREE_ISSUER_SECRET", "free-secret")
+        monkeypatch.setenv("VIDEO2ASCII_TRANSCRIBE_PROVIDER", "local")
+        files = {"file": ("test.mp4", b"fake", "video/mp4")}
+        response = client.post("/api/transcribe", files=files)
+        assert response.status_code == 401
+
+    @patch("video2ascii.web.app.generate_srt")
+    def test_transcribe_openai_provider_not_implemented(self, mock_generate_srt, monkeypatch):
+        monkeypatch.setenv("VIDEO2ASCII_FREE_MODE", "true")
+        monkeypatch.setenv("VIDEO2ASCII_FREE_ISSUER_SECRET", "free-secret")
+        monkeypatch.setenv("VIDEO2ASCII_TRANSCRIBE_PROVIDER", "openai")
+
+        token_resp = client.post("/api/billing/free-token")
+        token = token_resp.json()["token"]
+        files = {"file": ("test.mp4", b"fake", "video/mp4")}
+        response = client.post(
+            "/api/transcribe",
+            files=files,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 501
+        mock_generate_srt.assert_not_called()
+
+    @patch("video2ascii.web.app.generate_srt")
+    def test_transcribe_local_with_free_token(self, mock_generate_srt, monkeypatch):
+        monkeypatch.setenv("VIDEO2ASCII_FREE_MODE", "true")
+        monkeypatch.setenv("VIDEO2ASCII_FREE_ISSUER_SECRET", "free-secret")
+        monkeypatch.setenv("VIDEO2ASCII_TRANSCRIBE_PROVIDER", "local")
+
+        def _fake_generate_srt(_video_path, work_dir):
+            srt_path = Path(work_dir) / "out.srt"
+            srt_path.write_text(
+                "1\n00:00:00,000 --> 00:00:00,500\nHello\n",
+                encoding="utf-8",
+            )
+            return srt_path
+
+        mock_generate_srt.side_effect = _fake_generate_srt
+
+        token_resp = client.post("/api/billing/free-token")
+        token = token_resp.json()["token"]
+        files = {"file": ("test.mp4", b"fake", "video/mp4")}
+        response = client.post(
+            "/api/transcribe",
+            files=files,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        assert "srt" in response.json()

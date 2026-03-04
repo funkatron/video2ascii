@@ -32,6 +32,7 @@ env/
 *.swp
 *.swo
 *~
+.cursor/plans/
 
 # OS
 .DS_Store

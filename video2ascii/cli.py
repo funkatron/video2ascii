@@ -1,10 +1,14 @@
 """Command-line interface."""
 
 import argparse
+import json
 import logging
+import subprocess
 import sys
 import tempfile
+from fractions import Fraction
 from pathlib import Path
+from typing import Optional
 
 from video2ascii import __version__
 from video2ascii.converter import check_ffmpeg, extract_frames, convert_all, CHARSETS
@@ -15,6 +19,88 @@ from video2ascii.presets import PRESETS
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+
+def probe_display_aspect_ratio(input_path: Path) -> Optional[str]:
+    """Probe input video display aspect ratio (DAR) via ffprobe."""
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=display_aspect_ratio,width,height,sample_aspect_ratio",
+                "-of",
+                "json",
+                str(input_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+    try:
+        payload = json.loads(result.stdout)
+        streams = payload.get("streams") or []
+        if not streams:
+            return None
+        stream = streams[0]
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+    def _parse_ratio(value: str) -> Optional[float]:
+        if value in {"N/A", "0:1", "0:0"}:
+            return None
+        if ":" in value:
+            try:
+                num, den = value.split(":", 1)
+                num_f = float(num)
+                den_f = float(den)
+                if den_f > 0:
+                    return num_f / den_f
+            except ValueError:
+                return None
+        try:
+            ratio = float(value)
+            return ratio if ratio > 0 else None
+        except ValueError:
+            return None
+
+    def _to_ratio_string(value: float) -> Optional[str]:
+        if value <= 0:
+            return None
+        frac = Fraction(value).limit_denominator(1000)
+        if frac.denominator == 0:
+            return None
+        return f"{frac.numerator}:{frac.denominator}"
+
+    dar_raw = str(stream.get("display_aspect_ratio", "")).strip()
+    dar = _parse_ratio(dar_raw) if dar_raw else None
+    if dar:
+        if ":" in dar_raw and dar_raw not in {"N/A", "0:1", "0:0"}:
+            return dar_raw
+        return _to_ratio_string(dar)
+
+    # Fallback: width/height adjusted by SAR when DAR isn't present.
+    try:
+        width = float(stream.get("width", 0.0))
+        height = float(stream.get("height", 0.0))
+        sar_raw = str(stream.get("sample_aspect_ratio", "")).strip()
+        sar = _parse_ratio(sar_raw) if sar_raw else None
+        if width > 0 and height > 0:
+            ratio = width / height
+            if sar:
+                ratio *= sar
+            return _to_ratio_string(ratio)
+    except ValueError:
+        return None
+
+    return None
 
 
 def parse_args():
@@ -40,6 +126,7 @@ Examples:
   # Export
   %(prog)s input.mp4 --export movie.sh
   %(prog)s input.mp4 --color --subtitle --export-mp4 movie.mp4
+  %(prog)s input.mp4 --color --export-webm movie.webm
 
   # Web UI
   %(prog)s --web
@@ -143,7 +230,7 @@ Examples:
         type=str,
         default=None,
         metavar="NAME",
-        help=f"Charset name ({', '.join(CHARSETS.keys())}) or custom character string dark-to-light (example: ' .oO0', ' .:-=+*#%@', ' ⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏⠐⠑⠒⠓⠔⠕⠖⠗⠘⠙⠚⠛⠜⠝⠞⠟⠠⠡⠢⠣⠤⠥⠦⠧⠨⠩⠪⠫⠬⠭⠮⠯⠰⠱⠲⠳⠴⠵⠶⠷⠸⠹⠺⠻⠼⠽⠾⠿')",
+        help=f"Charset name ({', '.join(CHARSETS.keys())}) or custom character string dark-to-light (example: ' .oO0', ' .:-=+*#%%@', ' ⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏⠐⠑⠒⠓⠔⠕⠖⠗⠘⠙⠚⠛⠜⠝⠞⠟⠠⠡⠢⠣⠤⠥⠦⠧⠨⠩⠪⠫⠬⠭⠮⠯⠰⠱⠲⠳⠴⠵⠶⠷⠸⠹⠺⠻⠼⠽⠾⠿')",
     )
 
     parser.add_argument(
@@ -171,6 +258,13 @@ Examples:
         type=Path,
         metavar="FILE",
         help="Export ASCII frames as video file using ProRes 422 HQ codec",
+    )
+
+    parser.add_argument(
+        "--export-webm",
+        type=Path,
+        metavar="FILE",
+        help="Export ASCII frames as WebM video file (VP9 encoding)",
     )
 
     parser.add_argument(
@@ -373,6 +467,10 @@ def main():
             export(frames, args.export, args.fps, default_crt_playback)
             return
 
+        input_dar = probe_display_aspect_ratio(args.input)
+        if input_dar:
+            logger.debug("Input display aspect ratio: %s", input_dar)
+
         if args.export_mp4:
             target_mp4_width = min(1920, max(1280, args.width * 16))
             logger.debug(f"MP4 target width: {target_mp4_width} (scaled from ASCII width {args.width})")
@@ -388,6 +486,7 @@ def main():
                 codec="h265",
                 subtitle_path=subtitle_srt_path,
                 font_override=args.font,
+                display_aspect_ratio=input_dar,
             )
             return
 
@@ -406,6 +505,26 @@ def main():
                 codec="prores422",
                 subtitle_path=subtitle_srt_path,
                 font_override=args.font,
+                display_aspect_ratio=input_dar,
+            )
+            return
+
+        if args.export_webm:
+            target_mp4_width = min(1920, max(1280, args.width * 16))
+            logger.debug(f"WebM target width: {target_mp4_width} (scaled from ASCII width {args.width})")
+            export_mp4(
+                frames,
+                args.export_webm,
+                args.fps,
+                color=args.color,
+                color_scheme=args.color_scheme,
+                work_dir=work_dir,
+                charset=args.charset,
+                target_width=target_mp4_width,
+                codec="vp9",
+                subtitle_path=subtitle_srt_path,
+                font_override=args.font,
+                display_aspect_ratio=input_dar,
             )
             return
 

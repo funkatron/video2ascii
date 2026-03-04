@@ -395,6 +395,45 @@ class TestExportMP4:
         ffmpeg_cmd = ffmpeg_cmds[0]
         assert "-vf" not in ffmpeg_cmd
 
+    def test_applies_display_aspect_ratio_metadata(
+        self, temp_work_dir, sample_ascii_frame, mock_ffprobe
+    ):
+        """Test output DAR metadata is threaded to ffmpeg via setdar filter."""
+        output_path = temp_work_dir / "test_aspect.mp4"
+        frames = [sample_ascii_frame] * 2
+        captured_cmds = []
+
+        def mock_run(cmd, **kwargs):
+            captured_cmds.append(cmd)
+            output_path.touch()
+            return MagicMock(returncode=0)
+
+        with patch("video2ascii.mp4_exporter.subprocess.run", side_effect=mock_run):
+            with patch("video2ascii.mp4_exporter.print"):
+                export_mp4(
+                    frames,
+                    output_path,
+                    fps=12,
+                    color=False,
+                    color_scheme=None,
+                    work_dir=temp_work_dir,
+                    charset="classic",
+                    target_width=400,
+                    codec="h265",
+                    display_aspect_ratio="16:9",
+                )
+
+        ffmpeg_cmds = [
+            cmd
+            for cmd in captured_cmds
+            if isinstance(cmd, list) and len(cmd) > 2 and cmd[0] == "ffmpeg"
+        ]
+        assert ffmpeg_cmds
+        ffmpeg_cmd = ffmpeg_cmds[0]
+        assert "-vf" in ffmpeg_cmd
+        vf_value = ffmpeg_cmd[ffmpeg_cmd.index("-vf") + 1]
+        assert "setdar=16/9" in vf_value
+
     def test_all_charset_options(
         self, temp_work_dir, sample_ascii_frame, mock_ffprobe
     ):
