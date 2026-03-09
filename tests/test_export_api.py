@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from video2ascii.services.mp4_api import app
+from video2ascii.services.export_api import app
 
 client = TestClient(app)
 
@@ -33,7 +33,7 @@ def test_healthz():
     assert response.json()["status"] == "ok"
 
 
-@patch("video2ascii.services.mp4_api.export_mp4")
+@patch("video2ascii.services.export_api.export_mp4")
 def test_export_webm(mock_export_mp4, monkeypatch):
     monkeypatch.setenv("VIDEO2ASCII_EXPORT_TOKEN", "test-token")
     monkeypatch.delenv("VIDEO2ASCII_ALLOW_UNAUTH", raising=False)
@@ -60,7 +60,7 @@ def test_export_webm(mock_export_mp4, monkeypatch):
     assert response.headers["content-type"].startswith("video/webm")
 
 
-@patch("video2ascii.services.mp4_api.export_mp4")
+@patch("video2ascii.services.export_api.export_mp4")
 def test_export_mp4(mock_export_mp4, monkeypatch):
     monkeypatch.setenv("VIDEO2ASCII_EXPORT_TOKEN", "test-token")
     monkeypatch.delenv("VIDEO2ASCII_ALLOW_UNAUTH", raising=False)
@@ -99,7 +99,7 @@ def test_export_webm_requires_auth_in_free_mode(monkeypatch):
     assert response.status_code == 401
 
 
-@patch("video2ascii.services.mp4_api.export_mp4")
+@patch("video2ascii.services.export_api.export_mp4")
 def test_export_webm_accepts_signed_free_token(mock_export_mp4, monkeypatch):
     monkeypatch.delenv("VIDEO2ASCII_EXPORT_TOKEN", raising=False)
     monkeypatch.setenv("VIDEO2ASCII_FREE_MODE", "true")
@@ -135,7 +135,7 @@ def test_cors_preflight_export_webm():
     assert "content-type" in allow_headers
 
 
-@patch("video2ascii.services.mp4_api.export_mp4")
+@patch("video2ascii.services.export_api.export_mp4")
 def test_cors_simple_response_export_mp4(mock_export_mp4, monkeypatch):
     monkeypatch.setenv("VIDEO2ASCII_EXPORT_TOKEN", "test-token")
 

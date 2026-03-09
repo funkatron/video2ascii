@@ -8,7 +8,7 @@ This runbook deploys `video2ascii` with Docker Compose, with payment bypass enab
   - serves `/` (with `/public` as an alias to the same page)
   - issues free-mode access token at `POST /api/billing/free-token` when enabled
   - handles transcription at `POST /api/transcribe` (set `VIDEO2ASCII_TRANSCRIBE_PROVIDER=local`)
-- `export-api` (`video2ascii.services.mp4_api`)
+- `export-api` (`video2ascii.services.export_api`)
   - handles `POST /api/export/mp4` and `POST /api/export/webm`
   - still requires bearer auth
 - `reverse-proxy` (nginx)

@@ -44,7 +44,7 @@ CORS is enabled for browser clients. Configure allowed origins with:
 ## Local run
 
 ```bash
-uv run uvicorn video2ascii.services.mp4_api:app --reload --port 8080
+uv run uvicorn video2ascii.services.export_api:app --reload --port 8080
 ```
 
 ## Docker
