@@ -25,6 +25,7 @@ wheels/
 venv/
 ENV/
 env/
+deploy/aws/.env
 
 # IDE
 .vscode/
@@ -32,6 +33,7 @@ env/
 *.swp
 *.swo
 *~
+.cursor/plans/
 
 # OS
 .DS_Store
