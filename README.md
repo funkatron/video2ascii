@@ -374,14 +374,15 @@ Renders ASCII frames and encodes a WebM video with VP9.
 video2ascii input.mp4 --charset classic --export-webm output.webm
 ```
 
-### Public Deployment (Client-Side + Paid Tier)
+### Web Deployment (Single UI + Optional High Resource APIs)
 
-An additive public deployment entrypoint is available at:
+The web app now uses a single UI implementation:
 
-- `video2ascii/web/static/public.html`
-- Local route when using `--web`: `http://localhost:9999/public`
+- `video2ascii/web/static/index.html`
+- Local route when using `--web`: `http://localhost:9999/`
+- Backward-compatible alias: `http://localhost:9999/public` (serves the same page)
 
-The public page runs conversion client-side by default and can be configured with paid APIs.
+The page runs conversion client-side by default and can be configured with backend APIs for high-resource actions.
 
 - Free: local conversion, playback, `.sh` export, `.webm` export
 - Paid: API-backed auto transcription and MP4 export

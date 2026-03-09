@@ -205,11 +205,11 @@ async def get_presets():
 
 @app.get("/public", response_class=HTMLResponse)
 async def public_index():
-    """Serve the static public deployment page."""
-    public_path = static_dir / "public.html"
-    if not public_path.exists():
-        raise HTTPException(status_code=404, detail="public.html not found")
-    with open(public_path, "r") as f:
+    """Alias /public to the same single UI served at /."""
+    index_path = static_dir / "index.html"
+    if not index_path.exists():
+        raise HTTPException(status_code=404, detail="index.html not found")
+    with open(index_path, "r") as f:
         return HTMLResponse(content=f.read())
 
 

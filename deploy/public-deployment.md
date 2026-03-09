@@ -1,6 +1,6 @@
 # Public Deployment Guide
 
-This guide deploys `video2ascii/web/static/public.html` with optional paid services.
+This guide deploys the single web UI (`video2ascii/web/static/index.html`) with optional backend services.
 
 ## AWS-only quick path
 
@@ -20,7 +20,7 @@ It now includes:
 ## Phase 1 (Free)
 
 1. Host static assets (`video2ascii/web/static/`) on Cloudflare Pages.
-2. Use `public.html` as the entry page.
+2. Use `index.html` as the entry page.
 3. Users get client-side conversion, playback, `.sh`, and local `.webm` export.
 
 ## Phase 1.5 (Backend WebM parity)
@@ -45,7 +45,7 @@ wrangler secret put CORS_ALLOW_ORIGINS
 
 Use a comma-separated allowlist (for example your Pages URL and local dev origin).
 
-Configure `API Base URL` in `public.html` UI to your deployed domain.
+Configure `API Base URL` in the web UI to your deployed domain.
 
 ## Phase 3 (Paid MP4 export)
 

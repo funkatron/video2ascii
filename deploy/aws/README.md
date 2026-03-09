@@ -5,7 +5,7 @@ This runbook deploys `video2ascii` with Docker Compose, with payment bypass enab
 ## What this stack runs
 
 - `web-app` (`video2ascii.web.app`)
-  - serves `/` and `/public`
+  - serves `/` (with `/public` as an alias to the same page)
   - issues free-mode access token at `POST /api/billing/free-token` when enabled
   - handles transcription at `POST /api/transcribe` (set `VIDEO2ASCII_TRANSCRIBE_PROVIDER=local`)
 - `export-api` (`video2ascii.services.mp4_api`)
@@ -41,7 +41,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-Open `http://localhost/public` and set API Base URL to `http://localhost`.
+Open `http://localhost/` and set API Base URL to `http://localhost`.
 
 ## Production deploy (AWS EC2)
 
@@ -103,12 +103,12 @@ docker compose up -d --build
 docker compose ps
 ```
 
-Open `http://<ec2-public-ip>/public` and set API Base URL to `http://<ec2-public-ip>`.
+Open `http://<ec2-public-ip>/` and set API Base URL to `http://<ec2-public-ip>`.
 
 ## Smoke test checklist
 
-1. Open `/public`.
-2. Click **Unlock Paid Features**.
+1. Open `/` (or `/public`, which now serves the same UI).
+2. Click **Enable High Resource Features**.
 3. Verify status says free-mode token was issued.
 4. Upload a short video and convert.
 5. Run **Auto Subtitle (Paid)** (uses local whisper provider in free mode).

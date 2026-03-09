@@ -28,11 +28,13 @@ class TestWebApp:
         assert "video2ascii" in response.text.lower()
 
     def test_public_route(self):
-        """Test public route serves public deployment HTML."""
-        response = client.get("/public")
-        assert response.status_code == 200
-        assert "text/html" in response.headers["content-type"]
-        assert "<title>video2ascii</title>" in response.text.lower()
+        """Test /public is an alias for the same UI served at /."""
+        public_response = client.get("/public")
+        root_response = client.get("/")
+        assert public_response.status_code == 200
+        assert "text/html" in public_response.headers["content-type"]
+        assert "<title>video2ascii</title>" in public_response.text.lower()
+        assert public_response.text == root_response.text
 
     def test_convert_endpoint_missing_file(self):
         """Test convert endpoint without file."""

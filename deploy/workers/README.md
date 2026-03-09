@@ -72,7 +72,7 @@ wrangler deploy
 
 ## Public app wiring
 
-Set `API Base URL` in `public.html` to your worker/API domain.
+Set `API Base URL` in the web UI to your worker/API domain.
 The app expects:
 
 - `POST /api/billing/checkout` -> `{ checkout_url }`

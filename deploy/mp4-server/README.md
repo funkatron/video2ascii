@@ -1,6 +1,6 @@
 # MP4/WebM Export Service
 
-This service exposes paid export endpoints used by `public.html`.
+This service exposes export endpoints used by the web UI.
 
 For AWS-only free-mode deployment on EC2 with compose, see:
 
